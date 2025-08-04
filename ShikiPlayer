@@ -1,14 +1,12 @@
 // ==UserScript==
 // @name ShikiPlayer
-// @namespace https://github.com/Onzis/ShikiPlayer
+// @namespace http://tampermonkey.net/
 // @version 0.8
 // @description Автоматически загружает видеоплеер kodik для просмотра прямо на Shikimori
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
 // @grant none
-// @updateURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
-// @downloadURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
 // ==/UserScript==
 
 (function () {
