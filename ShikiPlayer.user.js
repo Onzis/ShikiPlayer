@@ -94,7 +94,7 @@
             padding: 8px 12px;
             font-weight: bold;
             color: #333;
-            width: 900px;
+            width: 830px;
         `;
 
         const title = playerContainer.querySelector('.kodik-title');
@@ -137,7 +137,7 @@
         console.log('[WatchButton] Создаю iframe для ID:', id);
         const iframe = document.createElement('iframe');
         iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}`;
-        iframe.width = '900'; // Ширина iframe
+        iframe.width = '830'; // Ширина iframe
         iframe.height = '500'; // Высота iframe
         iframe.frameBorder = '0';
         iframe.allowFullscreen = true;
