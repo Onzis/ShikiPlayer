@@ -1,0 +1,132 @@
+// ==UserScript==
+// @name Просмотр аниме онлайн на shikimori
+// @namespace http://tampermonkey.net/
+// @version 0.3
+// @description Автоматически загружает видеоплеер kodik для просмотра прямо на Shikimori
+// @author Your Name
+// @match https://shikimori.one/*
+// @grant none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    let currentPath = location.pathname;
+    let observer = null;
+
+    function getShikimoriID() {
+        const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
+        const id = match ? match[1] : null;
+        console.log('[WatchButton] Shikimori ID (из URL):', id);
+        return id;
+    }
+
+    function removeOldElements() {
+        const oldIframe = document.querySelector('iframe[src*="kodik.cc"]');
+        if (oldIframe) {
+            console.log('[WatchButton] Удаляю старый iframe');
+            oldIframe.remove();
+        }
+    }
+
+    function insertPlayerContainer() {
+        console.log('[WatchButton] Попытка вставить плеер на', location.pathname);
+
+        if (!/^\/animes\/[^/]+/.test(location.pathname)) {
+            console.log('[WatchButton] Не страница аниме — пропуск');
+            return;
+        }
+
+        removeOldElements();
+
+        const relatedBlock = document.querySelector('.cc-related-authors'); // Блок "Связанное"
+        if (!relatedBlock) {
+            console.log('[WatchButton] Элемент .cc-related-authors не найден');
+            return;
+        }
+
+        console.log('[WatchButton] Создаю контейнер для плеера...');
+
+        // Создаем новый контейнер
+        const playerContainer = document.createElement('div');
+        playerContainer.classList.add('kodik-container');
+        playerContainer.innerHTML = `
+            <h3>Онлайн просмотр</h3>
+            <div class="player-wrapper"></div>
+        `;
+
+        // Добавляем стили для контейнера
+        playerContainer.style.cssText = `
+            margin-top: 20px; /* Верхний отступ */
+            margin-bottom: 20px; /* Нижний отступ (по желанию) */
+            width: 900px; /* Ширина контейнера */
+            max-width: 100%; /* Адаптивность */
+        `;
+
+        // Получаем iframe
+        const id = getShikimoriID();
+        if (!id) {
+            console.log('[WatchButton] ID не найден, прерывание');
+            return;
+        }
+
+        console.log('[WatchButton] Создаю iframe для ID:', id);
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}`;
+        iframe.width = '900';
+        iframe.height = '500';
+        iframe.frameBorder = '0';
+        iframe.allowFullscreen = true;
+        iframe.setAttribute('allow', 'autoplay *; fullscreen *');
+
+        const playerWrapper = playerContainer.querySelector('.player-wrapper');
+        if (playerWrapper) {
+            playerWrapper.appendChild(iframe);
+            console.log('[WatchButton] iframe вставлен в .player-wrapper');
+        } else {
+            console.log('[WatchButton] .player-wrapper не найден');
+            return;
+        }
+
+        // Вставляем контейнер перед блоком "Связанное"
+        relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
+        console.log('[WatchButton] Контейнер с плеером вставлен перед .cc-related-authors');
+    }
+
+    function setupDOMObserver() {
+        if (observer) observer.disconnect();
+
+        observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if ([...mutation.addedNodes].some(node => node.nodeType === 1 && node.querySelector?.('.cc-related-authors'))) {
+                    console.log('[WatchButton] MutationObserver сработал — найдены изменения с .cc-related-authors');
+                    setTimeout(insertPlayerContainer, 100);
+                    break;
+                }
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+
+        console.log('[WatchButton] MutationObserver активирован');
+    }
+
+    function watchURLChanges() {
+        setInterval(() => {
+            if (location.pathname !== currentPath) {
+                console.log('[WatchButton] Обнаружено изменение URL:', location.pathname);
+                currentPath = location.pathname;
+                setTimeout(insertPlayerContainer, 500);
+            }
+        }, 300);
+    }
+
+    // Инициализация
+    console.log('[WatchButton] Скрипт запущен');
+    setupDOMObserver();
+    watchURLChanges();
+    insertPlayerContainer();
+})();
