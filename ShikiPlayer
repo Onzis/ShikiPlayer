@@ -7,8 +7,8 @@
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
 // @grant none
-// @updateURL 
-// @downloadURL 
+// @updateURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
+// @downloadURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
 // ==/UserScript==
 
 (function () {

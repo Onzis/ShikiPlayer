@@ -7,8 +7,8 @@
 // @homepageURL     $(HOMEPAGE_URL)
 // @version         $(VERSION)
 //
-// @updateURL       
-// @downloadURL     
+// @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
+// @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/manifest.user.js
 //
 // @match https://shikimori.one/*
 //
