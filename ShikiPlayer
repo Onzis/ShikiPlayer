@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name Просмотр аниме онлайн на shikimori
+// @name ShikiPlayer
 // @namespace http://tampermonkey.net/
-// @version 0.3
+// @version 0.8
 // @description Автоматически загружает видеоплеер kodik для просмотра прямо на Shikimori
-// @author Your Name
+// @author Onzis
 // @match https://shikimori.one/*
 // @grant none
 // ==/UserScript==
@@ -39,19 +39,37 @@
 
         removeOldElements();
 
-        const relatedBlock = document.querySelector('.cc-related-authors'); // Блок "Связанное"
+        let relatedBlock = document.querySelector('.cc-related-authors'); // Попытка 1
+
         if (!relatedBlock) {
-            console.log('[WatchButton] Элемент .cc-related-authors не найден');
+            console.log('[WatchButton] Попытка 2 — блок "Связанное" не найден, жду 500 мс...');
+            setTimeout(() => {
+                relatedBlock = document.querySelector('.cc-related-authors'); // Попытка 2
+                if (!relatedBlock) {
+                    console.log('[WatchButton] Блок "Связанное" так и не был найден');
+                    return;
+                }
+                createAndInsertPlayer(relatedBlock);
+            }, 500);
             return;
         }
 
+        createAndInsertPlayer(relatedBlock);
+    }
+
+    function createAndInsertPlayer(relatedBlock) {
         console.log('[WatchButton] Создаю контейнер для плеера...');
 
         // Создаем новый контейнер
         const playerContainer = document.createElement('div');
         playerContainer.classList.add('kodik-container');
         playerContainer.innerHTML = `
-            <h3>Онлайн просмотр</h3>
+            <div class="kodik-header">
+                <span class="kodik-title">ОНЛАЙН ПРОСМОТР</span>
+                <div class="kodik-links">
+                    <a href="https://github.com/Onzicry/ShikiPlayer">GitHub</a>
+                </div>
+            </div>
             <div class="player-wrapper"></div>
         `;
 
@@ -63,6 +81,48 @@
             max-width: 100%; /* Адаптивность */
         `;
 
+        // Стили для заголовка
+        const header = playerContainer.querySelector('.kodik-header');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #e6e8ea; /* Серый фон */
+            padding: 8px 12px;
+            font-weight: bold;
+            color: #333;
+        `;
+
+        const title = playerContainer.querySelector('.kodik-title');
+        title.style.cssText = `
+            font-size: 14px;
+        `;
+
+        const linksContainer = playerContainer.querySelector('.kodik-links');
+        linksContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px; /* Расстояние между ссылками */
+        `;
+
+        const links = linksContainer.querySelectorAll('a');
+        links.forEach(link => {
+            link.style.cssText = `
+                text-decoration: none;
+                color: #333;
+                font-size: 12px;
+                font-weight: normal;
+            `;
+        });
+
+        const separators = linksContainer.querySelectorAll('span');
+        separators.forEach(separator => {
+            separator.style.cssText = `
+                color: #999;
+                font-size: 12px;
+            `;
+        });
+
         // Получаем iframe
         const id = getShikimoriID();
         if (!id) {
@@ -73,20 +133,20 @@
         console.log('[WatchButton] Создаю iframe для ID:', id);
         const iframe = document.createElement('iframe');
         iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}`;
-        iframe.width = '900';
-        iframe.height = '500';
+        iframe.width = '900'; // Ширина iframe
+        iframe.height = '500'; // Высота iframe
         iframe.frameBorder = '0';
         iframe.allowFullscreen = true;
         iframe.setAttribute('allow', 'autoplay *; fullscreen *');
 
         const playerWrapper = playerContainer.querySelector('.player-wrapper');
-        if (playerWrapper) {
-            playerWrapper.appendChild(iframe);
-            console.log('[WatchButton] iframe вставлен в .player-wrapper');
-        } else {
+        if (!playerWrapper) {
             console.log('[WatchButton] .player-wrapper не найден');
             return;
         }
+
+        playerWrapper.appendChild(iframe);
+        console.log('[WatchButton] iframe вставлен в .player-wrapper');
 
         // Вставляем контейнер перед блоком "Связанное"
         relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
