@@ -6,6 +6,8 @@
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
+// @updateURL 
+// @downloadURL 
 // @grant none
 // ==/UserScript==
 
