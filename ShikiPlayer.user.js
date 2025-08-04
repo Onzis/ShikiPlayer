@@ -94,6 +94,7 @@
             padding: 8px 12px;
             font-weight: bold;
             color: #333;
+            width: 900px;
         `;
 
         const title = playerContainer.querySelector('.kodik-title');
