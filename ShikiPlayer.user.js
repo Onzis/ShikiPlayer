@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.4
+// @version 1.5
 // @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
 // @updateURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
+// @connect api.alloha.tv
+// @connect kodikapi.com
 // @grant GM.xmlHttpRequest
 // @license GPL-3.0 license
 // ==/UserScript==
