@@ -9,6 +9,7 @@
 // @updateURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @grant GM.xmlHttpRequest
+// @license GPL-3.0 license
 // ==/UserScript==
 
 (function () {
