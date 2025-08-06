@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.7
-// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
+// @version 1.10
+// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
@@ -24,6 +24,8 @@
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
   const CACHE_DURATION = 60 * 60 * 1000; // 1 час в миллисекундах
+  const WATCH_THRESHOLD = 15 * 60 * 1000; // 15 минут в миллисекундах
+  let watchTimer = null; // Таймер для отслеживания времени просмотра
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -33,10 +35,23 @@
   }
 
   function removeOldElements() {
-    const oldIframe = document.querySelector('iframe[src*="kodik.cc"], iframe[src*="alloha.tv"]');
-    if (oldIframe) {
+    // Удаляем старые iframe
+    const oldIframes = document.querySelectorAll('iframe[src*="kodik.cc"], iframe[src*="alloha.tv"]');
+    oldIframes.forEach(iframe => {
       console.log("[WatchButton] Удаляю старый iframe");
-      oldIframe.remove();
+      iframe.remove();
+    });
+    // Удаляем старые контейнеры
+    const oldContainers = document.querySelectorAll('.kodik-container');
+    oldContainers.forEach(container => {
+      console.log("[WatchButton] Удаляю старый контейнер .kodik-container");
+      container.remove();
+    });
+    // Останавливаем таймер
+    if (watchTimer) {
+      clearTimeout(watchTimer);
+      watchTimer = null;
+      console.log("[WatchButton] Таймер просмотра остановлен");
     }
   }
 
@@ -48,6 +63,7 @@
       return;
     }
 
+    // Удаляем старые элементы перед вставкой нового
     removeOldElements();
 
     let relatedBlock = document.querySelector(".cc-related-authors");
@@ -91,15 +107,12 @@
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-size: 14px; }
         .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 14px; text-align: center; }
-        @media (max-width: 768px) {
-            .kodik-header { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 13px; }
-            .kodik-title { font-size: 13px; }
-            .kodik-links a { font-size: 11px; }
-            .player-selector { margin-top: 4px; }
-            .player-wrapper { padding-bottom: 60%; }
-        }
     `;
-    document.head.appendChild(style);
+    // Проверяем, не существует ли уже стиль, чтобы не дублировать
+    if (!document.querySelector('style[data-shikiplayer]')) {
+      style.setAttribute('data-shikiplayer', 'true');
+      document.head.appendChild(style);
+    }
 
     const id = getShikimoriID();
     if (!id) {
@@ -113,15 +126,20 @@
     // Получаем данные о просмотренных эпизодах
     let nextEpisode = 1; // По умолчанию начинаем с первого эпизода
     let totalEpisodes = 0;
+    let userRateId = null;
+    let currentWatchedEpisodes = 0;
     try {
       const shikimoriData = await getShikimoriAnimeData(id, true); // Force refresh to avoid stale cache
       if (shikimoriData) {
         totalEpisodes = shikimoriData.episodes || shikimoriData.episodes_aired || 0;
         console.log("[WatchButton] Общее количество эпизодов:", totalEpisodes);
         if (shikimoriData.user_rate && typeof shikimoriData.user_rate.episodes === 'number') {
-          nextEpisode = shikimoriData.user_rate.episodes + 1;
-          console.log("[WatchButton] Просмотрено эпизодов (user_rate.episodes):", shikimoriData.user_rate.episodes);
+          currentWatchedEpisodes = shikimoriData.user_rate.episodes;
+          nextEpisode = currentWatchedEpisodes + 1;
+          userRateId = shikimoriData.user_rate.id;
+          console.log("[WatchButton] Просмотрено эпизодов (user_rate.episodes):", currentWatchedEpisodes);
           console.log("[WatchButton] Следующий эпизод на основе Shikimori:", nextEpisode);
+          console.log("[WatchButton] User Rate ID:", userRateId);
           // Проверяем, не превышает ли следующий эпизод общее количество эпизодов
           if (totalEpisodes > 0 && nextEpisode > totalEpisodes) {
             nextEpisode = totalEpisodes;
@@ -140,10 +158,10 @@
 
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
-    kodikBtn.addEventListener("click", () => switchPlayer("kodik", id, playerContainer, nextEpisode));
-    allohaBtn.addEventListener("click", () => switchPlayer("alloha", id, playerContainer, nextEpisode));
+    kodikBtn.addEventListener("click", () => switchPlayer("kodik", id, playerContainer, nextEpisode, userRateId, totalEpisodes, currentWatchedEpisodes));
+    allohaBtn.addEventListener("click", () => switchPlayer("alloha", id, playerContainer, nextEpisode, userRateId, totalEpisodes, currentWatchedEpisodes));
 
-    switchPlayer(currentPlayer, id, playerContainer, nextEpisode);
+    switchPlayer(currentPlayer, id, playerContainer, nextEpisode, userRateId, totalEpisodes, currentWatchedEpisodes);
   }
 
   async function getShikimoriAnimeData(id, forceRefresh = false) {
@@ -169,25 +187,97 @@
     }
   }
 
-  async function switchPlayer(playerType, id, playerContainer, episode) {
+  async function updateShikimoriUserRate(animeId, episode, userRateId, totalEpisodes) {
+    if (episode > totalEpisodes && totalEpisodes > 0) {
+      console.log("[WatchButton] Эпизод", episode, "превышает общее количество эпизодов (", totalEpisodes, "), пропускаем обновление user_rate");
+      return;
+    }
+
+    try {
+      // Проверяем, авторизован ли пользователь
+      const userInfo = await getShikimoriUserInfo();
+      if (!userInfo) {
+        console.log("[WatchButton] Пользователь не авторизован, обновление user_rate невозможно");
+        return;
+      }
+
+      const url = userRateId ? `https://shikimori.one/api/v2/user_rates/${userRateId}` : `https://shikimori.one/api/v2/user_rates`;
+      const method = userRateId ? "PATCH" : "POST";
+      const payload = {
+        user_rate: {
+          user_id: userInfo.id,
+          target_id: animeId,
+          target_type: "Anime",
+          episodes: episode,
+          status: episode === totalEpisodes && totalEpisodes > 0 ? "completed" : "watching"
+        }
+      };
+
+      await gmPost(url, payload, method);
+      console.log("[WatchButton] Эпизод", episode, "отмечен как просмотренный для аниме ID:", animeId);
+      
+      // Сбрасываем кэш Shikimori данных
+      localStorage.removeItem(`shikimori_anime_${animeId}`);
+      console.log("[WatchButton] Кэш Shikimori для ID", animeId, "сброшен");
+    } catch (error) {
+      console.error("[WatchButton] Ошибка при обновлении user_rate:", error);
+    }
+  }
+
+  async function getShikimoriUserInfo() {
+    try {
+      const url = `https://shikimori.one/api/users/whoami`;
+      const response = await gmGet(url);
+      const data = JSON.parse(response);
+      console.log("[WatchButton] Данные пользователя:", data);
+      return data;
+    } catch (error) {
+      console.error("[WatchButton] Ошибка при получении информации о пользователе:", error);
+      return null;
+    }
+  }
+
+  async function switchPlayer(playerType, id, playerContainer, episode, userRateId, totalEpisodes, currentWatchedEpisodes) {
     currentPlayer = playerType;
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка плеера...</div>`;
 
-    if (playerType === "kodik") {
-      const iframeSrc = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
-      const iframe = document.createElement("iframe");
-      iframe.src = iframeSrc;
-      iframe.allowFullscreen = true;
-      iframe.setAttribute("allow", "autoplay *; fullscreen *");
-      iframe.setAttribute("loading", "lazy");
-      playerWrapper.innerHTML = "";
-      playerWrapper.appendChild(iframe);
-      console.log("[WatchButton] Плеер Kodik загружен для ID:", id, "Эпизод:", episode);
-    } else if (playerType === "alloha") {
-      await loadAllohaPlayer(id, playerWrapper, episode);
-    } else {
-      console.error("[WatchButton] Неизвестный тип плеера:", playerType);
+    // Останавливаем предыдущий таймер
+    if (watchTimer) {
+      clearTimeout(watchTimer);
+      watchTimer = null;
+      console.log("[WatchButton] Предыдущий таймер просмотра остановлен");
+    }
+
+    try {
+      if (playerType === "kodik") {
+        const iframeSrc = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
+        const iframe = document.createElement("iframe");
+        iframe.src = iframeSrc;
+        iframe.allowFullscreen = true;
+        iframe.setAttribute("allow", "autoplay *; fullscreen *");
+        iframe.setAttribute("loading", "lazy");
+        playerWrapper.innerHTML = "";
+        playerWrapper.appendChild(iframe);
+        console.log("[WatchButton] Плеер Kodik загружен для ID:", id, "Эпизод:", episode);
+
+        // Запускаем таймер только если эпизод новый
+        if (episode > currentWatchedEpisodes) {
+          watchTimer = setTimeout(() => {
+            updateShikimoriUserRate(id, episode, userRateId, totalEpisodes);
+          }, WATCH_THRESHOLD);
+          console.log("[WatchButton] Запущен таймер на 15 минут для эпизода:", episode);
+        } else {
+          console.log("[WatchButton] Эпизод", episode, "уже просмотрен или ранее, обновление user_rate не требуется");
+        }
+      } else if (playerType === "alloha") {
+        await loadAllohaPlayer(id, playerWrapper, episode, userRateId, totalEpisodes, currentWatchedEpisodes);
+      } else {
+        console.error("[WatchButton] Неизвестный тип плеера:", playerType);
+      }
+    } catch (error) {
+      console.error("[WatchButton] Ошибка при загрузке плеера:", error);
+      playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${playerType}. Попробуйте позже.</div>`;
     }
   }
 
@@ -202,6 +292,30 @@
             resolve(response.responseText);
           } else {
             reject(new Error(`HTTP ${response.status}`));
+          }
+        },
+        onerror: function(error) {
+          reject(error);
+        }
+      });
+    });
+  }
+
+  function gmPost(url, data, method) {
+    return new Promise((resolve, reject) => {
+      GM.xmlHttpRequest({
+        method: method,
+        url: url,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
+        },
+        data: JSON.stringify(data),
+        onload: function(response) {
+          if (response.status >= 200 && response.status < 300) {
+            resolve(response.responseText);
+          } else {
+            reject(new Error(`HTTP ${response.status}: ${response.responseText}`));
           }
         },
         onerror: function(error) {
@@ -229,7 +343,7 @@
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
   }
 
-  async function loadAllohaPlayer(id, playerWrapper, episode) {
+  async function loadAllohaPlayer(id, playerWrapper, episode, userRateId, totalEpisodes, currentWatchedEpisodes) {
     try {
       const cacheKey = `alloha_${id}`;
       let iframeUrl = getCachedData(cacheKey);
@@ -278,6 +392,16 @@
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
       console.log("[WatchButton] Плеер Alloha загружен для ID:", id, "Эпизод:", episode, "Сезон:", season);
+
+      // Запускаем таймер только если эпизод новый
+      if (episode > currentWatchedEpisodes) {
+        watchTimer = setTimeout(() => {
+          updateShikimoriUserRate(id, episode, userRateId, totalEpisodes);
+        }, WATCH_THRESHOLD);
+        console.log("[WatchButton] Запущен таймер на 15 минут для эпизода:", episode);
+      } else {
+        console.log("[WatchButton] Эпизод", episode, "уже просмотрен или ранее, обновление user_rate не требуется");
+      }
     } catch (error) {
       console.error("[WatchButton] Ошибка загрузки плеера Alloha:", error);
       playerWrapper.innerHTML = "<p>Ошибка загрузки плеера Alloha. Попробуйте позже.</p>";
@@ -288,6 +412,11 @@
     if (observer) observer.disconnect();
 
     observer = new MutationObserver((mutations) => {
+      // Проверяем, нет ли уже контейнера
+      if (document.querySelector('.kodik-container')) {
+        console.log("[WatchButton] Контейнер .kodik-container уже существует, пропускаем MutationObserver");
+        return;
+      }
       for (const mutation of mutations) {
         if (
           [...mutation.addedNodes].some(
