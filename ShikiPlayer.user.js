@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.6
+// @version 1.7
 // @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
 // @author Onzis
 // @match https://shikimori.one/*
@@ -90,6 +90,7 @@
         .player-wrapper { position: relative; width: 100%; height: 0; padding-bottom: 56.25%; overflow: hidden; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-size: 14px; }
+        .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 14px; text-align: center; }
         @media (max-width: 768px) {
             .kodik-header { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 13px; }
             .kodik-title { font-size: 13px; }
@@ -111,16 +112,30 @@
 
     // Получаем данные о просмотренных эпизодах
     let nextEpisode = 1; // По умолчанию начинаем с первого эпизода
+    let totalEpisodes = 0;
     try {
-      const shikimoriData = await getShikimoriAnimeData(id);
-      if (shikimoriData && shikimoriData.user_rate && shikimoriData.user_rate.episodes) {
-        nextEpisode = shikimoriData.user_rate.episodes + 1;
-        console.log("[WatchButton] Следующий эпизод на основе Shikimori:", nextEpisode);
+      const shikimoriData = await getShikimoriAnimeData(id, true); // Force refresh to avoid stale cache
+      if (shikimoriData) {
+        totalEpisodes = shikimoriData.episodes || shikimoriData.episodes_aired || 0;
+        console.log("[WatchButton] Общее количество эпизодов:", totalEpisodes);
+        if (shikimoriData.user_rate && typeof shikimoriData.user_rate.episodes === 'number') {
+          nextEpisode = shikimoriData.user_rate.episodes + 1;
+          console.log("[WatchButton] Просмотрено эпизодов (user_rate.episodes):", shikimoriData.user_rate.episodes);
+          console.log("[WatchButton] Следующий эпизод на основе Shikimori:", nextEpisode);
+          // Проверяем, не превышает ли следующий эпизод общее количество эпизодов
+          if (totalEpisodes > 0 && nextEpisode > totalEpisodes) {
+            nextEpisode = totalEpisodes;
+            console.log("[WatchButton] Следующий эпизод скорректирован до последнего доступного:", nextEpisode);
+          }
+        } else {
+          console.log("[WatchButton] Данные user_rate не найдены или пользователь не авторизован, использую эпизод 1");
+        }
       } else {
-        console.log("[WatchButton] Данные user_rate не найдены или пользователь не авторизован, использую эпизод 1");
+        console.log("[WatchButton] Данные Shikimori не получены, использую эпизод 1");
       }
     } catch (error) {
       console.error("[WatchButton] Ошибка при получении данных Shikimori:", error);
+      playerContainer.querySelector(".player-wrapper").innerHTML = `<div class="error-message">Ошибка загрузки данных Shikimori. Используется эпизод 1.</div>`;
     }
 
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
@@ -131,17 +146,21 @@
     switchPlayer(currentPlayer, id, playerContainer, nextEpisode);
   }
 
-  async function getShikimoriAnimeData(id) {
+  async function getShikimoriAnimeData(id, forceRefresh = false) {
     const cacheKey = `shikimori_anime_${id}`;
-    let cachedData = getCachedData(cacheKey);
-    if (cachedData) {
-      return cachedData;
+    if (!forceRefresh) {
+      let cachedData = getCachedData(cacheKey);
+      if (cachedData) {
+        console.log("[WatchButton] Использую кэшированные данные Shikimori для ID:", id);
+        return cachedData;
+      }
     }
 
     try {
       const url = `https://shikimori.one/api/animes/${id}`;
       const response = await gmGet(url);
       const data = JSON.parse(response);
+      console.log("[WatchButton] Данные Shikimori API:", data);
       setCachedData(cacheKey, data);
       return data;
     } catch (error) {
@@ -177,7 +196,7 @@
       GM.xmlHttpRequest({
         method: "GET",
         url: url,
-        headers: { "Cache-Control": "no-cache" }, // Отключаем кэширование для Shikimori API
+        headers: { "Cache-Control": "no-cache" },
         onload: function(response) {
           if (response.status >= 200 && response.status < 300) {
             resolve(response.responseText);
@@ -199,6 +218,8 @@
       if (Date.now() - timestamp < CACHE_DURATION) {
         console.log("[WatchButton] Использую кэшированные данные для:", key);
         return data;
+      } else {
+        console.log("[WatchButton] Кэш устарел для:", key);
       }
     }
     return null;
@@ -210,12 +231,10 @@
 
   async function loadAllohaPlayer(id, playerWrapper, episode) {
     try {
-      // Проверяем кэш для Alloha
       const cacheKey = `alloha_${id}`;
       let iframeUrl = getCachedData(cacheKey);
-      let season = 1; // По умолчанию первая сезона
+      let season = 1;
       if (!iframeUrl) {
-        // Шаг 1: Получаем Kinopoisk ID или IMDB ID из Kodik API
         const kodikCacheKey = `kodik_${id}`;
         let kodikData = getCachedData(kodikCacheKey);
         if (!kodikData) {
@@ -231,9 +250,8 @@
         const firstResult = results[0];
         const kinopoiskId = firstResult.kinopoisk_id;
         const imdbId = firstResult.imdb_id;
-        season = firstResult.last_season || 1; // Получаем последний сезон из Kodik, если доступно
+        season = firstResult.last_season || 1;
 
-        // Шаг 2: Получаем URL плеера из Alloha API
         let allohaUrl;
         if (kinopoiskId) {
           allohaUrl = `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoiskId}`;
@@ -251,7 +269,6 @@
         setCachedData(cacheKey, iframeUrl);
       }
 
-      // Шаг 3: Добавляем параметр episode и season к URL Alloha
       const finalIframeUrl = `${iframeUrl}&episode=${episode}&season=${season}`;
       const iframe = document.createElement("iframe");
       iframe.src = finalIframeUrl;
