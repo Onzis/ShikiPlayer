@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.10
+// @version 1.11
 // @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
 // @author Onzis
 // @match https://shikimori.one/*
@@ -25,6 +25,7 @@
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
   const CACHE_DURATION = 60 * 60 * 1000;
+  const API_TIMEOUT = 5000; // Таймаут для API-запросов (5 секунд)
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -59,20 +60,20 @@
       const style = document.createElement("style");
       style.id = "kodik-styles";
       style.textContent = `
-        .kodik-container { margin: 20px auto; width: 100%; max-width: 900px; }
-        .kodik-header { display: flex; justify-content: space-between; align-items: center; background: #e6e8ea; padding: 8px 12px; font-size: 14px; font-weight: 600; color: #333; border-radius: 6px 6px 0 0; }
-        .kodik-links a { text-decoration: none; color: #333; font-size: 12px; }
-        .player-selector { display: flex; gap: 8px; }
-        .player-selector button { padding: 4px 8px; font-size: 12px; cursor: pointer; background: #f0f2f4; border: none; border-radius: 4px; }
+        .kodik-container { margin: 10px auto; width: 100%; max-width: 900px; }
+        .kodik-header { display: flex; justify-content: space-between; align-items: center; background: #e6e8ea; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #333; border-radius: 6px 6px 0 0; }
+        .kodik-links a { text-decoration: none; color: #333; font-size: 11px; }
+        .player-selector { display: flex; gap: 6px; }
+        .player-selector button { padding: 4px 6px; font-size: 11px; cursor: pointer; background: #f0f2f4; border: none; border-radius: 4px; }
         .player-selector button:hover { background: #d0d2d4; }
-        .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; }
+        .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-        .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-size: 14px; }
-        .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 14px; text-align: center; }
+        .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
+        .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 13px; text-align: center; z-index: 1; }
         @media (max-width: 768px) {
-          .kodik-container { margin: 10px auto; }
-          .kodik-header { padding: 6px 10px; font-size: 13px; }
-          .kodik-links a, .player-selector button { font-size: 11px; }
+          .kodik-container { margin: 5px auto; }
+          .kodik-header { padding: 5px 8px; font-size: 12px; }
+          .kodik-links a, .player-selector button { font-size: 10px; }
           .player-wrapper { padding-bottom: 60%; }
         }
       `;
@@ -129,7 +130,7 @@
     if (cachedData) return cachedData;
 
     try {
-      const response = await gmGet(`https://shikimori.one/api/animes/${id}`);
+      const response = await gmGetWithTimeout(`https://shikimori.one/api/animes/${id}`);
       const data = JSON.parse(response);
       setCachedData(cacheKey, data);
       return data;
@@ -145,9 +146,15 @@
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
 
     try {
+      // Проверка поддержки кодеков
+      if (playerType === "alloha" && !checkVideoCodecSupport()) {
+        throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
+      }
+
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
-      iframe.setAttribute("allow", "autoplay *; fullscreen *");
+      iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
+      iframe.setAttribute("playsinline", "true"); // Для исправления черного экрана на мобильных
       iframe.setAttribute("loading", "lazy");
 
       if (playerType === "kodik") {
@@ -162,18 +169,25 @@
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
     } catch (error) {
-      playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${playerType}. Попробуйте позже.</div>`;
+      playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${playerType}: ${error.message}. Попробуйте другой плеер.</div>`;
     }
   }
 
-  function gmGet(url) {
+  function gmGetWithTimeout(url) {
     return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Превышено время ожидания API")), API_TIMEOUT);
       GM.xmlHttpRequest({
         method: "GET",
         url,
         headers: { "Cache-Control": "no-cache" },
-        onload: ({ status, responseText }) => status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`)),
-        onerror: reject
+        onload: ({ status, responseText }) => {
+          clearTimeout(timeout);
+          status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`));
+        },
+        onerror: (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        }
       });
     });
   }
@@ -199,9 +213,13 @@
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
-      const kodikResponse = await gmGet(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
-      kodikData = JSON.parse(kodikResponse);
-      setCachedData(kodikCacheKey, kodikData);
+      try {
+        const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
+        kodikData = JSON.parse(kodikResponse);
+        setCachedData(kodikCacheKey, kodikData);
+      } catch (error) {
+        throw new Error("Ошибка загрузки данных Kodik API");
+      }
     }
 
     const results = kodikData.results;
@@ -211,13 +229,22 @@
     const allohaUrl = kinopoisk_id ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}` : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
     if (!allohaUrl) throw new Error("Kinopoisk ID или IMDB ID не найдены");
 
-    const allohaResponse = await gmGet(allohaUrl);
-    const allohaData = JSON.parse(allohaResponse);
-    if (allohaData.status !== "success") throw new Error("Ошибка Alloha API");
+    try {
+      const allohaResponse = await gmGetWithTimeout(allohaUrl);
+      const allohaData = JSON.parse(allohaResponse);
+      if (allohaData.status !== "success") throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
+      iframeUrl = allohaData.data.iframe;
+      setCachedData(cacheKey, iframeUrl);
+      return `${iframeUrl}&episode=${episode}&season=${last_season}`;
+    } catch (error) {
+      throw new Error("Ошибка загрузки Alloha: " + error.message);
+    }
+  }
 
-    iframeUrl = allohaData.data.iframe;
-    setCachedData(cacheKey, iframeUrl);
-    return `${iframeUrl}&episode=${episode}&season=${last_season}`;
+  function checkVideoCodecSupport() {
+    const video = document.createElement("video");
+    return video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') === "probably" ||
+           video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably";
   }
 
   function setupLazyLoading(container, callback) {
@@ -228,7 +255,7 @@
           observer.disconnect();
         }
       },
-      { rootMargin: "100px" }
+      { rootMargin: "50px" }
     );
     observer.observe(container);
   }
