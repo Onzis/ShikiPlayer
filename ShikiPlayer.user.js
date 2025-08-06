@@ -2,7 +2,7 @@
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
 // @version 1.5
-// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
+// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
@@ -10,6 +10,7 @@
 // @downloadURL https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @connect api.alloha.tv
 // @connect kodikapi.com
+// @connect shikimori.one
 // @grant GM.xmlHttpRequest
 // @license GPL-3.0 license
 // ==/UserScript==
@@ -57,7 +58,7 @@
     }
   }
 
-  function createAndInsertPlayer(relatedBlock) {
+  async function createAndInsertPlayer(relatedBlock) {
     console.log("[WatchButton] Создаю контейнер для плеера...");
 
     const playerContainer = document.createElement("div");
@@ -108,21 +109,54 @@
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
     console.log("[WatchButton] Контейнер с плеером вставлен");
 
+    // Получаем данные о просмотренных эпизодах
+    let nextEpisode = 1; // По умолчанию начинаем с первого эпизода
+    try {
+      const shikimoriData = await getShikimoriAnimeData(id);
+      if (shikimoriData && shikimoriData.user_rate && shikimoriData.user_rate.episodes) {
+        nextEpisode = shikimoriData.user_rate.episodes + 1;
+        console.log("[WatchButton] Следующий эпизод на основе Shikimori:", nextEpisode);
+      } else {
+        console.log("[WatchButton] Данные user_rate не найдены или пользователь не авторизован, использую эпизод 1");
+      }
+    } catch (error) {
+      console.error("[WatchButton] Ошибка при получении данных Shikimori:", error);
+    }
+
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
-    kodikBtn.addEventListener("click", () => switchPlayer("kodik", id, playerContainer));
-    allohaBtn.addEventListener("click", () => switchPlayer("alloha", id, playerContainer));
+    kodikBtn.addEventListener("click", () => switchPlayer("kodik", id, playerContainer, nextEpisode));
+    allohaBtn.addEventListener("click", () => switchPlayer("alloha", id, playerContainer, nextEpisode));
 
-    switchPlayer(currentPlayer, id, playerContainer);
+    switchPlayer(currentPlayer, id, playerContainer, nextEpisode);
   }
 
-  async function switchPlayer(playerType, id, playerContainer) {
+  async function getShikimoriAnimeData(id) {
+    const cacheKey = `shikimori_anime_${id}`;
+    let cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    try {
+      const url = `https://shikimori.one/api/animes/${id}`;
+      const response = await gmGet(url);
+      const data = JSON.parse(response);
+      setCachedData(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error("[WatchButton] Ошибка при запросе к Shikimori API:", error);
+      throw error;
+    }
+  }
+
+  async function switchPlayer(playerType, id, playerContainer, episode) {
     currentPlayer = playerType;
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка плеера...</div>`;
 
     if (playerType === "kodik") {
-      const iframeSrc = `https://kodik.cc/find-player?shikimoriID=${id}`;
+      const iframeSrc = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
       const iframe = document.createElement("iframe");
       iframe.src = iframeSrc;
       iframe.allowFullscreen = true;
@@ -130,9 +164,9 @@
       iframe.setAttribute("loading", "lazy");
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
-      console.log("[WatchButton] Плеер Kodik загружен для ID:", id);
+      console.log("[WatchButton] Плеер Kodik загружен для ID:", id, "Эпизод:", episode);
     } else if (playerType === "alloha") {
-      await loadAllohaPlayer(id, playerWrapper);
+      await loadAllohaPlayer(id, playerWrapper, episode);
     } else {
       console.error("[WatchButton] Неизвестный тип плеера:", playerType);
     }
@@ -143,6 +177,7 @@
       GM.xmlHttpRequest({
         method: "GET",
         url: url,
+        headers: { "Cache-Control": "no-cache" }, // Отключаем кэширование для Shikimori API
         onload: function(response) {
           if (response.status >= 200 && response.status < 300) {
             resolve(response.responseText);
@@ -173,11 +208,12 @@
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
   }
 
-  async function loadAllohaPlayer(id, playerWrapper) {
+  async function loadAllohaPlayer(id, playerWrapper, episode) {
     try {
       // Проверяем кэш для Alloha
       const cacheKey = `alloha_${id}`;
       let iframeUrl = getCachedData(cacheKey);
+      let season = 1; // По умолчанию первая сезона
       if (!iframeUrl) {
         // Шаг 1: Получаем Kinopoisk ID или IMDB ID из Kodik API
         const kodikCacheKey = `kodik_${id}`;
@@ -195,6 +231,7 @@
         const firstResult = results[0];
         const kinopoiskId = firstResult.kinopoisk_id;
         const imdbId = firstResult.imdb_id;
+        season = firstResult.last_season || 1; // Получаем последний сезон из Kodik, если доступно
 
         // Шаг 2: Получаем URL плеера из Alloha API
         let allohaUrl;
@@ -214,15 +251,16 @@
         setCachedData(cacheKey, iframeUrl);
       }
 
-      // Шаг 3: Устанавливаем URL в iframe
+      // Шаг 3: Добавляем параметр episode и season к URL Alloha
+      const finalIframeUrl = `${iframeUrl}&episode=${episode}&season=${season}`;
       const iframe = document.createElement("iframe");
-      iframe.src = iframeUrl;
+      iframe.src = finalIframeUrl;
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *");
       iframe.setAttribute("loading", "lazy");
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
-      console.log("[WatchButton] Плеер Alloha загружен для ID:", id);
+      console.log("[WatchButton] Плеер Alloha загружен для ID:", id, "Эпизод:", episode, "Сезон:", season);
     } catch (error) {
       console.error("[WatchButton] Ошибка загрузки плеера Alloha:", error);
       playerWrapper.innerHTML = "<p>Ошибка загрузки плеера Alloha. Попробуйте позже.</p>";
