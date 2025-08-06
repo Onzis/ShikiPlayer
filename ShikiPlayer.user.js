@@ -2,7 +2,7 @@
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
 // @version 1.10
-// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
+// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha), выбирает следующую серию на основе просмотренных эпизодов и отмечает серию как просмотренную после 15 минут просмотра, если эпизод новый
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
