@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.12
+// @version 1.2.1
 // @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
 // @author Onzis
 // @match https://shikimori.one/*
