@@ -24,7 +24,7 @@
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-  const CACHE_DURATION = 60 * 60 * 1000;
+  const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
   const API_TIMEOUT = 5000; // Таймаут для API-запросов (5 секунд)
 
   function getShikimoriID() {
