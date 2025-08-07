@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name ShikiPlayer
 // @namespace https://github.com/Onzis/ShikiPlayer
-// @version 1.13
-// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha)
+// @version 1.14
+// @description Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
 // @author Onzis
 // @match https://shikimori.one/*
 // @homepageURL https://github.com/Onzis/ShikiPlayer
@@ -24,8 +24,8 @@
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-  const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
-  const API_TIMEOUT = 5000;
+  const CACHE_DURATION = 5000;
+  const API_TIMEOUT = 5000; // Таймаут для API-запросов (5 секунд)
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -102,7 +102,19 @@
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
     if (observer) observer.disconnect();
 
-    const nextEpisode = 1; // Всегда начинаем с 1-й серии
+    let nextEpisode = 1;
+    let totalEpisodes = 0;
+    try {
+      const shikimoriData = await getShikimoriAnimeData(id);
+      if (shikimoriData) {
+        totalEpisodes = shikimoriData.episodes || shikimoriData.episodes_aired || 0;
+        if (shikimoriData.user_rate?.episodes) {
+          nextEpisode = Math.min(shikimoriData.user_rate.episodes + 1, totalEpisodes || Infinity);
+        }
+      }
+    } catch (error) {
+      playerContainer.querySelector(".player-wrapper").innerHTML = `<div class="error-message">Ошибка загрузки данных. Эпизод 1.</div>`;
+    }
 
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
@@ -134,6 +146,7 @@
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
 
     try {
+      // Проверка поддержки кодеков
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
       }
@@ -141,7 +154,7 @@
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
-      iframe.setAttribute("playsinline", "true");
+      iframe.setAttribute("playsinline", "true"); // Для исправления черного экрана на мобильных
       iframe.setAttribute("loading", "lazy");
 
       if (playerType === "kodik") {
