@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.15
-// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
+// @version      1.17
+// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) и выбирает следующую серию на основе просмотренных эпизодов
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -11,6 +11,7 @@
 // @connect      api.alloha.tv
 // @connect      kodikapi.com
 // @connect      shikimori.one
+// @connect      api.kinobox.tv
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
@@ -33,7 +34,9 @@
   }
 
   function removeOldElements() {
-    const oldIframe = document.querySelector('iframe[src*="kodik.cc"], iframe[src*="alloha.tv"]');
+    const oldIframe = document.querySelector(
+      'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"]'
+    );
     oldIframe?.remove();
   }
 
@@ -98,6 +101,7 @@
         <div class="player-selector">
           <button id="kodik-btn">Kodik</button>
           <button id="alloha-btn">Alloha</button>
+          <button id="turbo-btn">Turbo</button>
         </div>
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
@@ -128,11 +132,15 @@
 
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
+    const turboBtn = playerContainer.querySelector("#turbo-btn");
     kodikBtn.addEventListener("click", () =>
       switchPlayer("kodik", id, playerContainer, nextEpisode)
     );
     allohaBtn.addEventListener("click", () =>
       switchPlayer("alloha", id, playerContainer, nextEpisode)
+    );
+    turboBtn.addEventListener("click", () =>
+      switchPlayer("turbo", id, playerContainer, nextEpisode)
     );
 
     setupLazyLoading(playerContainer, () =>
@@ -177,6 +185,9 @@
       } else if (playerType === "alloha") {
         const iframeUrl = await loadAllohaPlayer(id, episode);
         iframe.src = iframeUrl;
+      } else if (playerType === "turbo") {
+        const iframeUrl = await loadTurboPlayer(id, episode);
+        iframe.src = iframeUrl;
       } else {
         throw new Error("Неизвестный тип плеера");
       }
@@ -188,13 +199,13 @@
     }
   }
 
-  function gmGetWithTimeout(url) {
+  function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error("Превышено время ожидания API")), API_TIMEOUT);
       GM.xmlHttpRequest({
         method: "GET",
         url,
-        headers: { "Cache-Control": "no-cache" },
+        headers: { "Cache-Control": "no-cache", ...options.headers },
         onload: ({ status, responseText }) => {
           clearTimeout(timeout);
           status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`));
@@ -220,7 +231,6 @@
     localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
   }
 
-  // Обновлённая функция загрузки плеера Alloha с повторными попытками и очисткой кэша
   async function loadAllohaPlayer(id, episode) {
     const cacheKey = `alloha_${id}`;
     let iframeUrl = getCachedData(cacheKey);
@@ -277,6 +287,70 @@
     } catch (error) {
       localStorage.removeItem(cacheKey);
       throw new Error("Ошибка загрузки Alloha: " + error.message);
+    }
+  }
+
+  async function loadTurboPlayer(id, episode) {
+    const cacheKey = `turbo_${id}`;
+    let iframeUrl = getCachedData(cacheKey);
+
+    if (iframeUrl) {
+      return iframeUrl;
+    }
+
+    const kodikCacheKey = `kodik_${id}`;
+    let kodikData = getCachedData(kodikCacheKey);
+    if (!kodikData) {
+      try {
+        const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
+        kodikData = JSON.parse(kodikResponse);
+        setCachedData(kodikCacheKey, kodikData);
+      } catch (error) {
+        throw new Error("Ошибка загрузки данных Kodik API");
+      }
+    }
+
+    const results = kodikData.results;
+    if (!results?.length) throw new Error("Нет результатов от Kodik API");
+
+    const { kinopoisk_id } = results[0];
+    if (!kinopoisk_id) throw new Error("Kinopoisk ID не найден");
+
+    const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+
+    async function tryFetchKinobox(retries = 3, delayMs = 1000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
+            headers: {
+              Referer: "https://kinohost.web.app/",
+              Origin: "https://kinohost.web.app",
+              "Sec-Fetch-Site": "same-origin",
+            },
+          });
+          const kinoboxData = JSON.parse(kinoboxResponse);
+          const turboPlayer = kinoboxData.data?.find((player) => player.type === "Turbo");
+          if (turboPlayer?.iframeUrl) {
+            return turboPlayer.iframeUrl;
+          } else {
+            throw new Error("Turbo плеер не найден в Kinobox API");
+          }
+        } catch (error) {
+          if (i === retries - 1) {
+            throw error;
+          }
+          await new Promise((res) => setTimeout(res, delayMs));
+        }
+      }
+    }
+
+    try {
+      const iframeUrl = await tryFetchKinobox();
+      setCachedData(cacheKey, iframeUrl);
+      return iframeUrl;
+    } catch (error) {
+      localStorage.removeItem(cacheKey);
+      throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
 
