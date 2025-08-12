@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.17
+// @version      1.18
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) и выбирает следующую серию на основе просмотренных эпизодов
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -21,7 +21,7 @@
 
   let currentPath = location.pathname;
   let observer = null;
-  let currentPlayer = "kodik";
+  let currentPlayer = "turbo";
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
@@ -97,9 +97,9 @@
           <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
         </div>
         <div class="player-selector">
+          <button id="turbo-btn">Turbo</button>
           <button id="kodik-btn">Kodik</button>
           <button id="alloha-btn">Alloha</button>
-          <button id="turbo-btn">Turbo</button>
         </div>
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
@@ -128,17 +128,17 @@
       ).innerHTML = `<div class="error-message">Ошибка загрузки данных. Эпизод 1.</div>`;
     }
 
+    const turboBtn = playerContainer.querySelector("#turbo-btn");
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
-    const turboBtn = playerContainer.querySelector("#turbo-btn");
+    turboBtn.addEventListener("click", () =>
+      switchPlayer("turbo", id, playerContainer, nextEpisode)
+    );
     kodikBtn.addEventListener("click", () =>
       switchPlayer("kodik", id, playerContainer, nextEpisode)
     );
     allohaBtn.addEventListener("click", () =>
       switchPlayer("alloha", id, playerContainer, nextEpisode)
-    );
-    turboBtn.addEventListener("click", () =>
-      switchPlayer("turbo", id, playerContainer, nextEpisode)
     );
 
     setupLazyLoading(playerContainer, () =>
@@ -178,13 +178,19 @@
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
 
-      if (playerType === "kodik") {
+      if (playerType === "turbo") {
+        try {
+          const iframeUrl = await loadTurboPlayer(id, episode);
+          iframe.src = iframeUrl;
+        } catch (error) {
+          console.warn("[ShikiPlayer] Turbo unavailable, falling back to Kodik");
+          currentPlayer = "kodik";
+          iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
+        }
+      } else if (playerType === "kodik") {
         iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
       } else if (playerType === "alloha") {
         const iframeUrl = await loadAllohaPlayer(id, episode);
-        iframe.src = iframeUrl;
-      } else if (playerType === "turbo") {
-        const iframeUrl = await loadTurboPlayer(id, episode);
         iframe.src = iframeUrl;
       } else {
         throw new Error("Неизвестный тип плеера");
@@ -313,7 +319,7 @@
 
     const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
 
-    async function tryFetchKinobox(retries = 3, delayMs = 1000) {
+    async function tryFetchKinobox(retries = 3) { // Removed delayMs parameter
       for (let i = 0; i < retries; i++) {
         try {
           const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
@@ -334,7 +340,6 @@
           if (i === retries - 1) {
             throw error;
           }
-          await new Promise((res) => setTimeout(res, delayMs));
         }
       }
     }
