@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.18
+// @version      1.19
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) и выбирает следующую серию на основе просмотренных эпизодов
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -74,6 +74,7 @@
         .player-selector { display: flex; gap: 6px; }
         .player-selector button { padding: 4px 6px; font-size: 11px; cursor: pointer; background: #f0f2f4; border: none; border-radius: 4px; }
         .player-selector button:hover { background: #d0d2d4; }
+        .player-selector button.active { background: #80b7ff; color: #fff; }
         .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
@@ -97,9 +98,9 @@
           <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
         </div>
         <div class="player-selector">
-          <button id="turbo-btn">Turbo</button>
-          <button id="kodik-btn">Kodik</button>
-          <button id="alloha-btn">Alloha</button>
+          <button id="turbo-btn" class="${currentPlayer === 'turbo' ? 'active' : ''}">Turbo</button>
+          <button id="kodik-btn" class="${currentPlayer === 'kodik' ? 'active' : ''}">Kodik</button>
+          <button id="alloha-btn" class="${currentPlayer === 'alloha' ? 'active' : ''}">Alloha</button>
         </div>
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
@@ -167,6 +168,14 @@
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
 
+    // Update button active states
+    const turboBtn = playerContainer.querySelector("#turbo-btn");
+    const kodikBtn = playerContainer.querySelector("#kodik-btn");
+    const allohaBtn = playerContainer.querySelector("#alloha-btn");
+    turboBtn.classList.toggle("active", playerType === "turbo");
+    kodikBtn.classList.toggle("active", playerType === "kodik");
+    allohaBtn.classList.toggle("active", playerType === "alloha");
+
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
@@ -185,6 +194,8 @@
         } catch (error) {
           console.warn("[ShikiPlayer] Turbo unavailable, falling back to Kodik");
           currentPlayer = "kodik";
+          turboBtn.classList.remove("active");
+          kodikBtn.classList.add("active");
           iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
         }
       } else if (playerType === "kodik") {
@@ -319,7 +330,7 @@
 
     const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
 
-    async function tryFetchKinobox(retries = 3) { // Removed delayMs parameter
+    async function tryFetchKinobox(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
           const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
