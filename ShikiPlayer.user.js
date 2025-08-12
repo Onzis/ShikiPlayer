@@ -25,8 +25,6 @@
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-  const CACHE_DURATION = 5000;
-  const API_TIMEOUT = 5000; // Таймаут для API-запросов (5 секунд)
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -201,17 +199,14 @@
 
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Превышено время ожидания API")), API_TIMEOUT);
       GM.xmlHttpRequest({
         method: "GET",
         url,
         headers: { "Cache-Control": "no-cache", ...options.headers },
         onload: ({ status, responseText }) => {
-          clearTimeout(timeout);
           status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`));
         },
         onerror: (error) => {
-          clearTimeout(timeout);
           reject(error);
         }
       });
@@ -221,14 +216,14 @@
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_DURATION) return data;
+      const { data } = JSON.parse(cached);
+      return data;
     }
     return null;
   }
 
   function setCachedData(key, data) {
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    localStorage.setItem(key, JSON.stringify({ data }));
   }
 
   async function loadAllohaPlayer(id, episode) {
