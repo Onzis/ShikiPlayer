@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.19
+// @version      1.20
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) и выбирает следующую серию на основе просмотренных эпизодов
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -38,12 +38,14 @@
     oldIframe?.remove();
   }
 
-  function insertPlayerContainer() {
+  function insertPlayerContainer(attempts = 10, delay = 200) {
+    console.log(`[ShikiPlayer] Попытка создать контейнер, попыток осталось: ${attempts}, URL: ${location.pathname}`);
     if (
       isInserting ||
       !/^\/animes\/[^/]+/.test(location.pathname) ||
       document.querySelector(".kodik-container")
     ) {
+      console.log("[ShikiPlayer] Создание контейнера прервано: уже существует или неверный URL");
       return;
     }
 
@@ -51,15 +53,20 @@
       document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
 
     if (!relatedBlock) {
-      setTimeout(insertPlayerContainer, 500);
+      console.log("[ShikiPlayer] relatedBlock не найден, повтор через", delay, "мс");
+      if (attempts > 0) {
+        setTimeout(() => insertPlayerContainer(attempts - 1, delay), delay);
+      }
       return;
     }
 
+    console.log("[ShikiPlayer] relatedBlock найден, создаём плеер");
     isInserting = true;
     removeOldElements();
 
     createAndInsertPlayer(relatedBlock).finally(() => {
       isInserting = false;
+      console.log("[ShikiPlayer] Плеер создан или ошибка");
     });
   }
 
@@ -392,17 +399,9 @@
     observer = new MutationObserver((mutations) => {
       if (document.querySelector(".kodik-container")) return;
 
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (
-            node.nodeType === 1 &&
-            (node.matches(".cc-related-authors, .sidebar") ||
-              node.querySelector(".cc-related-authors, .sidebar"))
-          ) {
-            insertPlayerContainer();
-            return;
-          }
-        }
+      if (/^\/animes\/[^/]+/.test(location.pathname)) {
+        console.log("[ShikiPlayer] DOM изменился, пытаемся создать контейнер");
+        insertPlayerContainer();
       }
     });
 
@@ -412,28 +411,45 @@
   function watchURLChanges() {
     let lastPath = location.pathname;
 
-    const onUrlChange = () => {
+    const checkUrlChange = () => {
       if (location.pathname !== lastPath) {
         lastPath = location.pathname;
+        console.log("[ShikiPlayer] URL изменился:", lastPath);
         document.querySelector(".kodik-container")?.remove();
         insertPlayerContainer();
       }
     };
 
+    setInterval(checkUrlChange, 300);
+
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
-      onUrlChange();
+      checkUrlChange();
     };
 
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
-      onUrlChange();
+      checkUrlChange();
     };
 
-    window.addEventListener("popstate", onUrlChange);
+    window.addEventListener("popstate", checkUrlChange);
   }
+
+  // Для ручного вызова
+  window.manualInsertPlayer = function () {
+    console.log("[ShikiPlayer] Ручной вызов insertPlayerContainer");
+    document.querySelector(".kodik-container")?.remove();
+    insertPlayerContainer();
+  };
+
+  // Поддержка Turbolinks (если используется)
+  document.addEventListener("turbolinks:load", () => {
+    console.log("[ShikiPlayer] Turbolinks: страница загружена");
+    document.querySelector(".kodik-container")?.remove();
+    insertPlayerContainer();
+  });
 
   setupDOMObserver();
   watchURLChanges();
