@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.15
-// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik и Alloha) и выбирает следующую серию на основе просмотренных эпизодов
+// @version      1.21
+// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo, Lumex)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -11,6 +11,8 @@
 // @connect      api.alloha.tv
 // @connect      kodikapi.com
 // @connect      shikimori.one
+// @connect      api.kinobox.tv
+// @connect      api.lumex.cc
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
@@ -20,12 +22,11 @@
 
   let currentPath = location.pathname;
   let observer = null;
-  let currentPlayer = "kodik";
+  let currentPlayer = "turbo";
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-  const CACHE_DURATION = 5000;
-  const API_TIMEOUT = 5000; // Таймаут для API-запросов (5 секунд)
+  const LumexToken = "b1712a234f46990d0efd5ff0205f427d";
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -33,34 +34,41 @@
   }
 
   function removeOldElements() {
-    const oldIframe = document.querySelector('iframe[src*="kodik.cc"], iframe[src*="alloha.tv"]');
+    const oldIframe = document.querySelector(
+      'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.cc"]'
+    );
     oldIframe?.remove();
   }
 
-  function insertPlayerContainer() {
+  function insertPlayerContainer(attempts = 10, delay = 200) {
+    console.log(`[ShikiPlayer] Попытка создать контейнер, попыток осталось: ${attempts}, URL: ${location.pathname}`);
     if (
       isInserting ||
       !/^\/animes\/[^/]+/.test(location.pathname) ||
       document.querySelector(".kodik-container")
     ) {
+      console.log("[ShikiPlayer] Создание контейнера прервано: уже существует или неверный URL");
       return;
     }
 
-    // Ищем контейнер для вставки: сначала .cc-related-authors, если нет — альтернативный .sidebar
     const relatedBlock =
       document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
 
     if (!relatedBlock) {
-      // Если контейнера пока нет, попробуем через полсекунды
-      setTimeout(insertPlayerContainer, 500);
+      console.log("[ShikiPlayer] relatedBlock не найден, повтор через", delay, "мс");
+      if (attempts > 0) {
+        setTimeout(() => insertPlayerContainer(attempts - 1, delay), delay);
+      }
       return;
     }
 
+    console.log("[ShikiPlayer] relatedBlock найден, создаём плеер");
     isInserting = true;
     removeOldElements();
 
     createAndInsertPlayer(relatedBlock).finally(() => {
       isInserting = false;
+      console.log("[ShikiPlayer] Плеер создан или ошибка");
     });
   }
 
@@ -75,6 +83,7 @@
         .player-selector { display: flex; gap: 6px; }
         .player-selector button { padding: 4px 6px; font-size: 11px; cursor: pointer; background: #f0f2f4; border: none; border-radius: 4px; }
         .player-selector button:hover { background: #d0d2d4; }
+        .player-selector button.active { background: #80b7ff; color: #fff; }
         .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
@@ -98,8 +107,10 @@
           <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
         </div>
         <div class="player-selector">
-          <button id="kodik-btn">Kodik</button>
-          <button id="alloha-btn">Alloha</button>
+          <button id="turbo-btn" class="${currentPlayer === 'turbo' ? 'active' : ''}">Turbo</button>
+          <button id="kodik-btn" class="${currentPlayer === 'kodik' ? 'active' : ''}">Kodik</button>
+          <button id="alloha-btn" class="${currentPlayer === 'alloha' ? 'active' : ''}">Alloha</button>
+          <button id="lumex-btn" class="${currentPlayer === 'lumex' ? 'active' : ''}">Lumex</button>
         </div>
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
@@ -128,13 +139,21 @@
       ).innerHTML = `<div class="error-message">Ошибка загрузки данных. Эпизод 1.</div>`;
     }
 
+    const turboBtn = playerContainer.querySelector("#turbo-btn");
     const kodikBtn = playerContainer.querySelector("#kodik-btn");
     const allohaBtn = playerContainer.querySelector("#alloha-btn");
+    const lumexBtn = playerContainer.querySelector("#lumex-btn");
+    turboBtn.addEventListener("click", () =>
+      switchPlayer("turbo", id, playerContainer, nextEpisode)
+    );
     kodikBtn.addEventListener("click", () =>
       switchPlayer("kodik", id, playerContainer, nextEpisode)
     );
     allohaBtn.addEventListener("click", () =>
       switchPlayer("alloha", id, playerContainer, nextEpisode)
+    );
+    lumexBtn.addEventListener("click", () =>
+      switchPlayer("lumex", id, playerContainer, nextEpisode)
     );
 
     setupLazyLoading(playerContainer, () =>
@@ -163,6 +182,17 @@
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
 
+    // Update button active states
+    const turboBtn = playerContainer.querySelector("#turbo-btn");
+    const kodikBtn = playerContainer.querySelector("#kodik-btn");
+    const allohaBtn = playerContainer.querySelector("#alloha-btn");
+    const lumexBtn = playerContainer.querySelector("#lumex-btn");
+    turboBtn.classList.toggle("active", playerType === "turbo");
+    kodikBtn.classList.toggle("active", playerType === "kodik");
+    allohaBtn.classList.toggle("active", playerType === "alloha");
+    lumexBtn.classList.toggle("active", playerType === "lumex");
+
+
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
@@ -174,10 +204,24 @@
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
 
-      if (playerType === "kodik") {
+      if (playerType === "turbo") {
+        try {
+          const iframeUrl = await loadTurboPlayer(id, episode);
+          iframe.src = iframeUrl;
+        } catch (error) {
+          console.warn("[ShikiPlayer] Turbo unavailable, falling back to Kodik");
+          currentPlayer = "kodik";
+          turboBtn.classList.remove("active");
+          kodikBtn.classList.add("active");
+          iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
+        }
+      } else if (playerType === "kodik") {
         iframe.src = `https://kodik.cc/find-player?shikimoriID=${id}&episode=${episode}`;
       } else if (playerType === "alloha") {
         const iframeUrl = await loadAllohaPlayer(id, episode);
+        iframe.src = iframeUrl;
+      } else if (playerType === "lumex") {
+        const iframeUrl = await loadLumexPlayer(id, episode);
         iframe.src = iframeUrl;
       } else {
         throw new Error("Неизвестный тип плеера");
@@ -190,19 +234,16 @@
     }
   }
 
-  function gmGetWithTimeout(url) {
+  function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Превышено время ожидания API")), API_TIMEOUT);
       GM.xmlHttpRequest({
         method: "GET",
         url,
-        headers: { "Cache-Control": "no-cache" },
+        headers: { "Cache-Control": "no-cache", ...options.headers },
         onload: ({ status, responseText }) => {
-          clearTimeout(timeout);
           status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`));
         },
         onerror: (error) => {
-          clearTimeout(timeout);
           reject(error);
         }
       });
@@ -212,28 +253,29 @@
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_DURATION) return data;
+      const { data } = JSON.parse(cached);
+      return data;
     }
     return null;
   }
 
   function setCachedData(key, data) {
-    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    localStorage.setItem(key, JSON.stringify({ data }));
   }
 
   async function loadAllohaPlayer(id, episode) {
     const cacheKey = `alloha_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) return `${iframeUrl}&episode=${episode}&season=1`;
+
+    if (iframeUrl) {
+      return `${iframeUrl}&episode=${episode}&season=1`;
+    }
 
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
       try {
-        const kodikResponse = await gmGetWithTimeout(
-          `https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`
-        );
+        const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
         kodikData = JSON.parse(kodikResponse);
         setCachedData(kodikCacheKey, kodikData);
       } catch (error) {
@@ -248,20 +290,138 @@
     const allohaUrl = kinopoisk_id
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+
     if (!allohaUrl) throw new Error("Kinopoisk ID или IMDB ID не найдены");
 
+    async function tryFetchAlloha(retries = 3, delayMs = 1000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const allohaResponse = await gmGetWithTimeout(allohaUrl);
+          const allohaData = JSON.parse(allohaResponse);
+          if (allohaData.status === "success" && allohaData.data?.iframe) {
+            return allohaData.data.iframe;
+          } else {
+            throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
+          }
+        } catch (error) {
+          if (i === retries - 1) {
+            throw error;
+          }
+          await new Promise((res) => setTimeout(res, delayMs));
+        }
+      }
+    }
+
     try {
-      const allohaResponse = await gmGetWithTimeout(allohaUrl);
-      const allohaData = JSON.parse(allohaResponse);
-      if (allohaData.status !== "success")
-        throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
-      iframeUrl = allohaData.data.iframe;
+      const iframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, iframeUrl);
       return `${iframeUrl}&episode=${episode}&season=${last_season}`;
     } catch (error) {
+      localStorage.removeItem(cacheKey);
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
+
+  async function loadTurboPlayer(id, episode) {
+    const cacheKey = `turbo_${id}`;
+    let iframeUrl = getCachedData(cacheKey);
+
+    if (iframeUrl) {
+      return iframeUrl;
+    }
+
+    const kodikCacheKey = `kodik_${id}`;
+    let kodikData = getCachedData(kodikCacheKey);
+    if (!kodikData) {
+      try {
+        const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
+        kodikData = JSON.parse(kodikResponse);
+        setCachedData(kodikCacheKey, kodikData);
+      } catch (error) {
+        throw new Error("Ошибка загрузки данных Kodik API");
+      }
+    }
+
+    const results = kodikData.results;
+    if (!results?.length) throw new Error("Нет результатов от Kodik API");
+
+    const { kinopoisk_id } = results[0];
+    if (!kinopoisk_id) throw new Error("Kinopoisk ID не найден");
+
+    const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+
+    async function tryFetchKinobox(retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
+            headers: {
+              Referer: "https://kinohost.web.app/",
+              Origin: "https://kinohost.web.app",
+              "Sec-Fetch-Site": "same-origin",
+            },
+          });
+          const kinoboxData = JSON.parse(kinoboxResponse);
+          const turboPlayer = kinoboxData.data?.find((player) => player.type === "Turbo");
+          if (turboPlayer?.iframeUrl) {
+            return turboPlayer.iframeUrl;
+          } else {
+            throw new Error("Turbo плеер не найден в Kinobox API");
+          }
+        } catch (error) {
+          if (i === retries - 1) {
+            throw error;
+          }
+        }
+      }
+    }
+
+    try {
+      const iframeUrl = await tryFetchKinobox();
+      setCachedData(cacheKey, iframeUrl);
+      return iframeUrl;
+    } catch (error) {
+      localStorage.removeItem(cacheKey);
+      throw new Error("Ошибка загрузки Turbo: " + error.message);
+    }
+  }
+
+  async function loadLumexPlayer(id, episode) {
+    const cacheKey = `lumex_${id}`;
+    let iframeUrl = getCachedData(cacheKey);
+    if (iframeUrl) {
+      return `${iframeUrl}?episode=${episode}`;
+    }
+
+    const lumexUrl = `https://api.lumex.cc/search?token=${LumexToken}&shikimori_id=${id}`;
+
+    async function tryFetchLumex(retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const lumexResponse = await gmGetWithTimeout(lumexUrl);
+          const lumexData = JSON.parse(lumexResponse);
+          if (lumexData.results?.length > 0 && lumexData.results[0].iframe) {
+            return lumexData.results[0].iframe;
+          } else {
+            throw new Error("Lumex плеер не найден");
+          }
+        } catch (error) {
+          if (i === retries - 1) {
+            throw error;
+          }
+        }
+      }
+    }
+
+    try {
+      const iframeUrl = await tryFetchLumex();
+      setCachedData(cacheKey, iframeUrl);
+      return `${iframeUrl}?episode=${episode}`;
+    } catch (error) {
+      localStorage.removeItem(cacheKey);
+      throw new Error("Ошибка загрузки Lumex: " + error.message);
+    }
+  }
+
 
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
@@ -290,17 +450,9 @@
     observer = new MutationObserver((mutations) => {
       if (document.querySelector(".kodik-container")) return;
 
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (
-            node.nodeType === 1 &&
-            (node.matches(".cc-related-authors, .sidebar") ||
-              node.querySelector(".cc-related-authors, .sidebar"))
-          ) {
-            insertPlayerContainer();
-            return;
-          }
-        }
+      if (/^\/animes\/[^/]+/.test(location.pathname)) {
+        console.log("[ShikiPlayer] DOM изменился, пытаемся создать контейнер");
+        insertPlayerContainer();
       }
     });
 
@@ -310,29 +462,45 @@
   function watchURLChanges() {
     let lastPath = location.pathname;
 
-    const onUrlChange = () => {
+    const checkUrlChange = () => {
       if (location.pathname !== lastPath) {
         lastPath = location.pathname;
+        console.log("[ShikiPlayer] URL изменился:", lastPath);
         document.querySelector(".kodik-container")?.remove();
         insertPlayerContainer();
       }
     };
 
-    // Перехват pushState и replaceState
+    setInterval(checkUrlChange, 300);
+
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
-      onUrlChange();
+      checkUrlChange();
     };
 
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
-      onUrlChange();
+      checkUrlChange();
     };
 
-    window.addEventListener("popstate", onUrlChange);
+    window.addEventListener("popstate", checkUrlChange);
   }
+
+  // Для ручного вызова
+  window.manualInsertPlayer = function () {
+    console.log("[ShikiPlayer] Ручной вызов insertPlayerContainer");
+    document.querySelector(".kodik-container")?.remove();
+    insertPlayerContainer();
+  };
+
+  // Поддержка Turbolinks (если используется)
+  document.addEventListener("turbolinks:load", () => {
+    console.log("[ShikiPlayer] Turbolinks: страница загружена");
+    document.querySelector(".kodik-container")?.remove();
+    insertPlayerContainer();
+  });
 
   setupDOMObserver();
   watchURLChanges();
