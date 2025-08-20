@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.21
-// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo)
+// @version      1.23
+// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) с уведомлениями об ошибках.
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -25,6 +25,34 @@
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
+
+  /**
+   * Показывает всплывающее уведомление.
+   * @param {string} message - Текст уведомления.
+   * @param {string} [type='error'] - Тип уведомления ('error', 'info', 'success').
+   * @param {number} [duration=5000] - Длительность показа в миллисекундах.
+   */
+  function showToast(message, type = 'error', duration = 5000) {
+    let toastContainer = document.getElementById('shiki-toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'shiki-toast-container';
+      document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `shiki-toast shiki-toast--${type}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => toast.classList.add("show"), 100);
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+      toast.addEventListener('transitionend', () => toast.remove());
+    }, duration);
+  }
+
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -90,6 +118,38 @@
           .kodik-links a, .player-selector select { font-size: 10px; }
           .player-wrapper { padding-bottom: 60%; }
         }
+
+        /* === ИЗМЕНЕННЫЕ СТИЛИ УВЕДОМЛЕНИЙ === */
+        #shiki-toast-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .shiki-toast {
+            background-color: rgba(25, 25, 25, 0.65);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: #f0f0f0;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateX(-100%);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .shiki-toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .shiki-toast--error { border-left: 4px solid #e74c3c; }
+        .shiki-toast--info { border-left: 4px solid #3498db; }
+        .shiki-toast--success { border-left: 4px solid #2ecc71; }
       `;
       document.head.appendChild(style);
     }
@@ -100,7 +160,7 @@
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
         <div class="kodik-links">
-          <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
+          <a href="https://github.com/Onzis/ShikiPlayer" target="_blank">GitHub</a>
         </div>
         <div class="player-selector">
           <select id="player-select">
@@ -134,6 +194,7 @@
       playerContainer.querySelector(
         ".player-wrapper"
       ).innerHTML = `<div class="error-message">Ошибка загрузки данных. Эпизод 1.</div>`;
+      showToast('Ошибка загрузки данных с Shikimori.');
     }
 
     const playerSelect = playerContainer.querySelector("#player-select");
@@ -187,6 +248,7 @@
           return;
         } catch (error) {
           console.warn("[ShikiPlayer] Turbo unavailable, falling back to Alloha");
+          showToast('Плеер Turbo недоступен, переключаюсь на Alloha.', 'info');
           currentPlayer = "alloha";
           playerSelect.value = "alloha";
         }
@@ -196,6 +258,7 @@
       if (currentPlayer === "alloha") {
         if (!checkVideoCodecSupport()) {
           console.warn("[ShikiPlayer] Alloha codecs not supported, falling back to Kodik");
+          showToast('Ваш браузер не поддерживает кодеки Alloha, переключаюсь на Kodik.', 'info');
           currentPlayer = "kodik";
           playerSelect.value = "kodik";
         } else {
@@ -207,6 +270,7 @@
             return;
           } catch (error) {
             console.warn("[ShikiPlayer] Alloha unavailable, falling back to Kodik");
+            showToast('Плеер Alloha недоступен, переключаюсь на Kodik.', 'info');
             currentPlayer = "kodik";
             playerSelect.value = "kodik";
           }
@@ -223,7 +287,9 @@
 
       throw new Error("Неизвестный тип плеера");
     } catch (error) {
-      playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${currentPlayer}: ${error.message}. Попробуйте другой плеер.</div>`;
+        const displayMessage = `Ошибка: ${error.message}. Попробуйте другой плеер.`;
+        playerWrapper.innerHTML = `<div class="error-message">${displayMessage}</div>`;
+        showToast(displayMessage);
     }
   }
 
@@ -284,7 +350,7 @@
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
 
-    if (!allohaUrl) throw new Error("Kinopoisk ID или IMDB ID не найдены");
+    if (!kinopoisk_id && !imdb_id) throw new Error("Kinopoisk ID или IMDB ID не найдены");
 
     async function tryFetchAlloha(retries = 3, delayMs = 1000) {
       for (let i = 0; i < retries; i++) {
@@ -306,7 +372,7 @@
     }
 
     try {
-      const iframeUrl = await tryFetchAlloha();
+      iframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, iframeUrl);
       return `${iframeUrl}&episode=${episode}&season=${last_season}`;
     } catch (error) {
@@ -369,7 +435,7 @@
     }
 
     try {
-      const iframeUrl = await tryFetchKinobox();
+      iframeUrl = await tryFetchKinobox();
       setCachedData(cacheKey, iframeUrl);
       return iframeUrl;
     } catch (error) {
