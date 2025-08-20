@@ -136,7 +136,8 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px 20px;
+            padding: 12px 10px;
+            white-space: nowrap;
             border-radius: 8px;
             color: #f0f0f0;
             font-size: 14px;
