@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.23
+// @version      1.24
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Kodik, Alloha, Turbo) с уведомлениями об ошибках.
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -122,12 +122,14 @@
         /* === ИЗМЕНЕННЫЕ СТИЛИ УВЕДОМЛЕНИЙ === */
         #shiki-toast-container {
             position: fixed;
-            top: 70px;
-            left: 20px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 9999;
             display: flex;
-            flex-direction: column;
+            flex-direction: column-reverse;
             gap: 10px;
+            align-items: center;
         }
         .shiki-toast {
             background-color: rgba(25, 25, 25, 0.65);
@@ -140,12 +142,12 @@
             font-size: 14px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             opacity: 0;
-            transform: translateX(-100%);
+            transform: translateY(100%);
             transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .shiki-toast.show {
             opacity: 1;
-            transform: translateX(0);
+            transform: translateY(0);
         }
         .shiki-toast--error { border-left: 4px solid #e74c3c; }
         .shiki-toast--info { border-left: 4px solid #3498db; }
