@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.25
+// @version      1.25.1
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik, с современным уведомлением и выпадающим списком плееров)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -183,7 +183,6 @@
   function playerSelectorHTML(current) {
     return `
       <div class="player-selector-dropdown">
-        <label for="player-dropdown" style="margin-right:8px;font-size:13px;">Плеер:</label>
         <select id="player-dropdown" style="padding:6px 16px;font-size:13px;border-radius:6px;border:1px solid #ccc;outline:none;box-shadow:none;">
           <option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>
           <option value="alloha" ${current === 'alloha' ? 'selected' : ''}>Alloha</option>
@@ -237,9 +236,6 @@
     playerContainer.innerHTML = `
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
-        <div class="kodik-links">
-          <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
-        </div>
         ${playerSelectorHTML(currentPlayer)}
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
