@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.25.2
-// @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik)
+// @version      1.27.0
+// @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -33,7 +33,7 @@
 
   function removeOldElements() {
     const oldIframe = document.querySelector(
-      'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"]'
+      'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
@@ -184,6 +184,7 @@
       <div class="player-selector-dropdown">
         <select id="player-dropdown" style="padding:6px 16px;font-size:13px;border-radius:6px;border:1px solid #ccc;outline:none;box-shadow:none;">
           <option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>
+          <option value="lumex" ${current === 'lumex' ? 'selected' : ''}>Lumex</option>
           <option value="alloha" ${current === 'alloha' ? 'selected' : ''}>Alloha</option>
           <option value="kodik" ${current === 'kodik' ? 'selected' : ''}>Kodik</option>
         </select>
@@ -274,22 +275,30 @@
     );
   }
 
+  // Новый порядок: Turbo > Lumex > Alloha > Kodik
   async function autoPlayerChain(id, playerContainer, episode) {
     try {
       currentPlayer = "turbo";
       playerContainer.querySelector("#player-dropdown").value = "turbo";
       await showPlayer("turbo", id, playerContainer, episode);
     } catch (e1) {
-      showNotification("Turbo недоступен, переключаю на Alloha", "warning");
+      showNotification("Turbo недоступен, переключаю на Lumex", "warning");
       try {
-        currentPlayer = "alloha";
-        playerContainer.querySelector("#player-dropdown").value = "alloha";
-        await showPlayer("alloha", id, playerContainer, episode);
+        currentPlayer = "lumex";
+        playerContainer.querySelector("#player-dropdown").value = "lumex";
+        await showPlayer("lumex", id, playerContainer, episode);
       } catch (e2) {
-        showNotification("Alloha недоступен, переключаю на Kodik", "warning");
-        currentPlayer = "kodik";
-        playerContainer.querySelector("#player-dropdown").value = "kodik";
-        await showPlayer("kodik", id, playerContainer, episode);
+        showNotification("Lumex недоступен, переключаю на Alloha", "warning");
+        try {
+          currentPlayer = "alloha";
+          playerContainer.querySelector("#player-dropdown").value = "alloha";
+          await showPlayer("alloha", id, playerContainer, episode);
+        } catch (e3) {
+          showNotification("Alloha недоступен, переключаю на Kodik", "warning");
+          currentPlayer = "kodik";
+          playerContainer.querySelector("#player-dropdown").value = "kodik";
+          await showPlayer("kodik", id, playerContainer, episode);
+        }
       }
     }
   }
@@ -330,6 +339,14 @@
         } catch (error) {
           throw error;
         }
+      } else if (playerType === "lumex") {
+        try {
+          const iframeUrl = await loadLumexPlayer(id, episode);
+          iframe.src = iframeUrl;
+          iframe.onerror = () => { throw new Error("Lumex 404"); };
+        } catch (error) {
+          throw error;
+        }
       } else {
         showNotification("Неизвестный тип плеера.", "error");
         throw new Error("Неизвестный тип плеера");
@@ -340,6 +357,7 @@
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
           if (playerType === "alloha") throw new Error("Alloha 404");
+          if (playerType === "lumex") throw new Error("Lumex 404");
         }
       }, 2000);
     } catch (error) {
@@ -504,6 +522,77 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
+
+  async function loadLumexPlayer(id, episode) {
+    const cacheKey = `lumex_${id}_${episode}`;
+    let iframeUrl = getCachedData(cacheKey);
+    if (iframeUrl) { return iframeUrl; }
+
+    // Получаем kinopoisk_id через Kodik API (как Turbo/Alloha)
+    const kodikCacheKey = `kodik_${id}`;
+    let kodikData = getCachedData(kodikCacheKey);
+    if (!kodikData) {
+      try {
+        const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
+        kodikData = JSON.parse(kodikResponse);
+        setCachedData(kodikCacheKey, kodikData);
+      } catch (error) {
+        showNotification("Ошибка загрузки данных Kodik API для Lumex.", "error");
+        throw new Error("Ошибка загрузки данных Kodik API");
+      }
+    }
+    const results = kodikData.results;
+    if (!results?.length) {
+      showNotification("Нет результатов от Kodik API для Lumex.", "error");
+      throw new Error("Нет результатов от Kodik API");
+    }
+    const { kinopoisk_id } = results[0];
+    if (!kinopoisk_id) {
+      showNotification("Kinopoisk ID не найден для Lumex.", "error");
+      throw new Error("Kinopoisk ID не найден");
+    }
+    const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+    async function tryFetchKinoboxLumex(retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
+            headers: {
+              Referer: "https://kinohost.web.app/",
+              Origin: "https://kinohost.web.app",
+              "Sec-Fetch-Site": "same-origin",
+            },
+          });
+          const kinoboxData = JSON.parse(kinoboxResponse);
+          const lumexPlayer = kinoboxData.data?.find((player) => player.type === "Lumex");
+          if (lumexPlayer?.iframeUrl) {
+            // Добавить эпизод, если есть параметр
+            let url = lumexPlayer.iframeUrl;
+            if (episode) {
+              url += (url.includes("?") ? "&" : "?") + "episode=" + episode;
+            }
+            return url;
+          } else {
+            throw new Error("Lumex плеер не найден в Kinobox API");
+          }
+        } catch (error) {
+          if (i === retries - 1) {
+            showNotification("Kinobox API недоступен для Lumex. Попробуйте позже.", "error");
+            throw error;
+          }
+        }
+      }
+    }
+    try {
+      const iframeUrl = await tryFetchKinoboxLumex();
+      setCachedData(cacheKey, iframeUrl);
+      return iframeUrl;
+    } catch (error) {
+      localStorage.removeItem(cacheKey);
+      showNotification("Ошибка загрузки Lumex: " + error.message, "error");
+      throw new Error("Ошибка загрузки Lumex: " + error.message);
+    }
+  }
+
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
