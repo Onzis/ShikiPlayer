@@ -71,33 +71,41 @@
       const style = document.createElement('style');
       style.id = 'shikip-notif-style-modern';
       style.textContent = `
-        .shikip-notif-modern {
+        .shikip-notif-modern-container {
           position: fixed;
           left: 50%;
           bottom: 32px;
-          transform: translateX(-50%) translateY(80px);
-          min-width: 220px;
-          max-width: 90vw;
+          transform: translateX(-50%);
+          z-index: 99999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          max-width: 96vw;
+          pointer-events: none;
+        }
+        .shikip-notif-modern {
           background: rgba(20,20,20,0.8);
           color: #fff;
           padding: 18px 32px;
           border-radius: 14px;
-          z-index: 99999;
           font-size: 1.08rem;
           font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
           box-shadow: 0 8px 32px rgba(50,50,65,.16);
           opacity: 0;
+          margin-top: 8px;
+          margin-bottom: 2px;
           display: flex;
           align-items: center;
           gap: 14px;
           transition: opacity .5s, transform .5s;
           pointer-events: auto;
           backdrop-filter: blur(8px);
+          border: 2px solid transparent;
         }
-        .shikip-notif-modern.success { border: 2px solid #43e97b33; }
-        .shikip-notif-modern.error   { border: 2px solid #e7382733; }
-        .shikip-notif-modern.info    { border: 2px solid #396afc33; }
-        .shikip-notif-modern.warning { border: 2px solid #ffd20033; }
+        .shikip-notif-modern.success { border-color: #43e97b33; }
+        .shikip-notif-modern.error   { border-color: #e7382733; }
+        .shikip-notif-modern.info    { border-color: #396afc33; }
+        .shikip-notif-modern.warning { border-color: #ffd20033; }
         .shikip-notif-modern .notif-icon {
           font-size: 1.5rem;
           flex-shrink: 0;
@@ -119,12 +127,30 @@
             padding: 12px 18px;
             font-size: .97rem;
             gap: 10px;
+          }
+          .shikip-notif-modern-container {
+            max-width: 99vw;
             bottom: 10px;
           }
         }
       `;
       document.head.appendChild(style);
     }
+
+    // Контейнер для стэка уведомлений (1, максимум 2 шт одновременно)
+    let notifContainer = document.getElementById('shikip-notif-modern-container');
+    if (!notifContainer) {
+      notifContainer = document.createElement('div');
+      notifContainer.id = 'shikip-notif-modern-container';
+      notifContainer.className = 'shikip-notif-modern-container';
+      document.body.appendChild(notifContainer);
+    }
+
+    // Удалить все предыдущие уведомления (чтобы не накладывались)
+    while (notifContainer.firstChild) {
+      notifContainer.removeChild(notifContainer.firstChild);
+    }
+
     const icons = {
       success: "✅",
       error: "⛔",
@@ -139,16 +165,16 @@
       <span>${message}</span>
       <button class="notif-close" title="Закрыть">&times;</button>
     `;
-    document.body.appendChild(notif);
+    notifContainer.appendChild(notif);
 
     setTimeout(() => {
       notif.style.opacity = "1";
-      notif.style.transform = "translateX(-50%) translateY(0)";
+      notif.style.transform = "none";
     }, 10);
 
     const hide = () => {
       notif.style.opacity = "0";
-      notif.style.transform = "translateX(-50%) translateY(80px)";
+      notif.style.transform = "translateY(20px)";
       setTimeout(() => notif.remove(), 500);
     };
     setTimeout(hide, 4500);
@@ -285,7 +311,6 @@
         try {
           const iframeUrl = await loadTurboPlayer(id, episode);
           iframe.src = iframeUrl;
-          // Проверяем ошибку Turbo (404)
           iframe.onerror = () => { throw new Error("Turbo 404"); };
         } catch (error) {
           throw error;
@@ -296,7 +321,6 @@
         try {
           const iframeUrl = await loadAllohaPlayer(id, episode);
           iframe.src = iframeUrl;
-          // Проверяем ошибку Alloha (404)
           iframe.onerror = () => { throw new Error("Alloha 404"); };
         } catch (error) {
           throw error;
@@ -309,7 +333,6 @@
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
 
-      // Если iframe не загрузился (404), через 2 сек — кидаем ошибку
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
