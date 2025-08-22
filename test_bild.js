@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.24
-// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik, с современными уведомлениями)
+// @version      1.25
+// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik, с современным уведомлением и выпадающим списком плееров)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -137,7 +137,6 @@
       document.head.appendChild(style);
     }
 
-    // Контейнер для стэка уведомлений (1, максимум 2 шт одновременно)
     let notifContainer = document.getElementById('shikip-notif-modern-container');
     if (!notifContainer) {
       notifContainer = document.createElement('div');
@@ -146,7 +145,6 @@
       document.body.appendChild(notifContainer);
     }
 
-    // Удалить все предыдущие уведомления (чтобы не накладывались)
     while (notifContainer.firstChild) {
       notifContainer.removeChild(notifContainer.firstChild);
     }
@@ -181,6 +179,43 @@
     notif.querySelector('.notif-close').onclick = hide;
   }
 
+  // --- Выпадающий список для выбора плеера ---
+  function playerSelectorHTML(current) {
+    return `
+      <div class="player-selector-dropdown">
+        <label for="player-dropdown" style="margin-right:8px;font-size:13px;">Плеер:</label>
+        <select id="player-dropdown" style="padding:6px 16px;font-size:13px;border-radius:6px;border:1px solid #ccc;outline:none;box-shadow:none;">
+          <option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>
+          <option value="alloha" ${current === 'alloha' ? 'selected' : ''}>Alloha</option>
+          <option value="kodik" ${current === 'kodik' ? 'selected' : ''}>Kodik</option>
+        </select>
+      </div>
+    `;
+  }
+
+  if (!document.getElementById('shikip-dropdown-style')) {
+    const style = document.createElement('style');
+    style.id = 'shikip-dropdown-style';
+    style.textContent = `
+      .player-selector-dropdown {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      #player-dropdown {
+        background: #f0f2f4;
+        transition: background .2s, box-shadow .2s;
+      }
+      #player-dropdown:focus {
+        background: #e6e8ea;
+        box-shadow: 0 2px 8px #80b7ff33;
+        border-color: #80b7ff;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  // ------------------------------------------------
+
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -189,10 +224,6 @@
         .kodik-container { margin: 10px auto; width: 100%; max-width: 900px; }
         .kodik-header { display: flex; justify-content: space-between; align-items: center; background: #e6e8ea; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #333; border-radius: 6px 6px 0 0; }
         .kodik-links a { text-decoration: none; color: #333; font-size: 11px; }
-        .player-selector { display: flex; gap: 6px; }
-        .player-selector button { padding: 4px 6px; font-size: 11px; cursor: pointer; background: #f0f2f4; border: none; border-radius: 4px; }
-        .player-selector button:hover { background: #d0d2d4; }
-        .player-selector button.active { background: #80b7ff; color: #fff; }
         .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
@@ -209,11 +240,7 @@
         <div class="kodik-links">
           <a href="https://github.com/Onzicry/ShikiPlayer" target="_blank">GitHub</a>
         </div>
-        <div class="player-selector">
-          <button id="turbo-btn" class="${currentPlayer === 'turbo' ? 'active' : ''}">Turbo</button>
-          <button id="alloha-btn" class="${currentPlayer === 'alloha' ? 'active' : ''}">Alloha</button>
-          <button id="kodik-btn" class="${currentPlayer === 'kodik' ? 'active' : ''}">Kodik</button>
-        </div>
+        ${playerSelectorHTML(currentPlayer)}
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
     `;
@@ -242,37 +269,33 @@
       showNotification("Не удалось загрузить данные аниме. Попробуйте обновить страницу.", "error");
     }
 
-    const turboBtn = playerContainer.querySelector("#turbo-btn");
-    const kodikBtn = playerContainer.querySelector("#kodik-btn");
-    const allohaBtn = playerContainer.querySelector("#alloha-btn");
-    turboBtn.addEventListener("click", () =>
-      manualSwitchPlayer("turbo", id, playerContainer, nextEpisode)
-    );
-    kodikBtn.addEventListener("click", () =>
-      manualSwitchPlayer("kodik", id, playerContainer, nextEpisode)
-    );
-    allohaBtn.addEventListener("click", () =>
-      manualSwitchPlayer("alloha", id, playerContainer, nextEpisode)
-    );
+    // Выпадающий список выбора плеера
+    playerContainer.querySelector("#player-dropdown").addEventListener("change", (e) => {
+      manualSwitchPlayer(e.target.value, id, playerContainer, nextEpisode);
+    });
 
     setupLazyLoading(playerContainer, () =>
       autoPlayerChain(id, playerContainer, nextEpisode)
     );
   }
 
+  // Остальной код без изменений (autoPlayerChain/manualSwitchPlayer/showPlayer/... и далее)
+
   async function autoPlayerChain(id, playerContainer, episode) {
-    // Turbo → Alloha → Kodik, с уведомлениями
     try {
       currentPlayer = "turbo";
+      playerContainer.querySelector("#player-dropdown").value = "turbo";
       await showPlayer("turbo", id, playerContainer, episode);
     } catch (e1) {
       showNotification("Turbo недоступен, переключаю на Alloha", "warning");
       try {
         currentPlayer = "alloha";
+        playerContainer.querySelector("#player-dropdown").value = "alloha";
         await showPlayer("alloha", id, playerContainer, episode);
       } catch (e2) {
         showNotification("Alloha недоступен, переключаю на Kodik", "warning");
         currentPlayer = "kodik";
+        playerContainer.querySelector("#player-dropdown").value = "kodik";
         await showPlayer("kodik", id, playerContainer, episode);
       }
     }
@@ -286,27 +309,16 @@
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
-
-    // Update button active states
-    const turboBtn = playerContainer.querySelector("#turbo-btn");
-    const kodikBtn = playerContainer.querySelector("#kodik-btn");
-    const allohaBtn = playerContainer.querySelector("#alloha-btn");
-    turboBtn.classList.toggle("active", playerType === "turbo");
-    kodikBtn.classList.toggle("active", playerType === "kodik");
-    allohaBtn.classList.toggle("active", playerType === "alloha");
-
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         showNotification("Ваш браузер не поддерживает необходимые кодеки для Alloha плеера.", "error");
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
       }
-
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
-
       if (playerType === "turbo") {
         try {
           const iframeUrl = await loadTurboPlayer(id, episode);
@@ -329,17 +341,14 @@
         showNotification("Неизвестный тип плеера.", "error");
         throw new Error("Неизвестный тип плеера");
       }
-
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
-
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
           if (playerType === "alloha") throw new Error("Alloha 404");
         }
       }, 2000);
-
     } catch (error) {
       playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${playerType}: ${error.message}. Попробуйте другой плеер.</div>`;
       showNotification(`Не работает плеер ${playerType}: ${error.message}.`, "error");
@@ -347,21 +356,18 @@
     }
   }
 
+  // --- остальные функции без изменений ---
   async function getShikimoriAnimeData(id) {
     const cacheKey = `shikimori_anime_${id}`;
     let cachedData = getCachedData(cacheKey);
     if (cachedData) return cachedData;
-
     try {
       const response = await gmGetWithTimeout(`https://shikimori.one/api/animes/${id}`);
       const data = JSON.parse(response);
       setCachedData(cacheKey, data);
       return data;
-    } catch (error) {
-      throw error;
-    }
+    } catch (error) { throw error; }
   }
-
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -371,63 +377,46 @@
         onload: ({ status, responseText }) => {
           status >= 200 && status < 300 ? resolve(responseText) : reject(new Error(`HTTP ${status}`));
         },
-        onerror: (error) => {
-          reject(error);
-        }
+        onerror: (error) => { reject(error); }
       });
     });
   }
-
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
-    if (cached) {
-      const { data } = JSON.parse(cached);
-      return data;
-    }
+    if (cached) { const { data } = JSON.parse(cached); return data; }
     return null;
   }
-
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
-
   async function loadAllohaPlayer(id, episode) {
     const cacheKey = `alloha_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-
-    if (iframeUrl) {
-      return `${iframeUrl}&episode=${episode}&season=1`;
-    }
-
+    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1`; }
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
       try {
         const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
-        kodikData = JSON.parse(kodikResponse);
-        setCachedData(kodikCacheKey, kodikData);
+        kodikData = JSON.parse(kodikResponse); setCachedData(kodikCacheKey, kodikData);
       } catch (error) {
         showNotification("Ошибка загрузки данных Kodik API для Alloha.", "error");
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
-
     const results = kodikData.results;
     if (!results?.length) {
       showNotification("Нет результатов от Kodik API для Alloha.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-
     const { kinopoisk_id, imdb_id, last_season = 1 } = results[0];
     const allohaUrl = kinopoisk_id
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
-
     if (!allohaUrl) {
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
       throw new Error("Kinopoisk ID или IMDB ID не найдены");
     }
-
     async function tryFetchAlloha(retries = 3, delayMs = 1000) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -438,11 +427,8 @@
           } else if (
             allohaData.error_info &&
             allohaData.error_info.includes('К сожалению, запрашиваемая серия отсутствует')
-          ) {
-            throw new Error('NO_EPISODE');
-          } else {
-            throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
-          }
+          ) { throw new Error('NO_EPISODE'); }
+          else { throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка")); }
         } catch (error) {
           if (error.message === 'NO_EPISODE') throw error;
           if (i === retries - 1) {
@@ -453,29 +439,21 @@
         }
       }
     }
-
     try {
       const iframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, iframeUrl);
       return `${iframeUrl}&episode=${episode}&season=${last_season}`;
     } catch (error) {
       localStorage.removeItem(cacheKey);
-      if (error.message === 'NO_EPISODE') {
-        throw new Error('NO_EPISODE');
-      }
+      if (error.message === 'NO_EPISODE') { throw new Error('NO_EPISODE'); }
       showNotification("Ошибка загрузки Alloha: " + error.message, "error");
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
-
   async function loadTurboPlayer(id, episode) {
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-
-    if (iframeUrl) {
-      return iframeUrl;
-    }
-
+    if (iframeUrl) { return iframeUrl; }
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -488,21 +466,17 @@
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
-
     const results = kodikData.results;
     if (!results?.length) {
       showNotification("Нет результатов от Kodik API для Turbo.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-
     const { kinopoisk_id } = results[0];
     if (!kinopoisk_id) {
       showNotification("Kinopoisk ID не найден для Turbo.", "error");
       throw new Error("Kinopoisk ID не найден");
     }
-
     const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
-
     async function tryFetchKinobox(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -528,7 +502,6 @@
         }
       }
     }
-
     try {
       const iframeUrl = await tryFetchKinobox();
       setCachedData(cacheKey, iframeUrl);
@@ -539,7 +512,6 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
-
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -547,7 +519,6 @@
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
-
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -560,23 +531,18 @@
     );
     observer.observe(container);
   }
-
   function setupDOMObserver() {
     if (observer) observer.disconnect();
-
     observer = new MutationObserver(() => {
       if (document.querySelector(".kodik-container")) return;
       if (/^\/animes\/[^/]+/.test(location.pathname)) {
         insertPlayerContainer();
       }
     });
-
     observer.observe(document.body, { childList: true, subtree: true });
   }
-
   function watchURLChanges() {
     let lastPath = location.pathname;
-
     const checkUrlChange = () => {
       if (location.pathname !== lastPath) {
         lastPath = location.pathname;
@@ -584,29 +550,23 @@
         insertPlayerContainer();
       }
     };
-
     setInterval(checkUrlChange, 300);
-
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
       checkUrlChange();
     };
-
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
       checkUrlChange();
     };
-
     window.addEventListener("popstate", checkUrlChange);
   }
-
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
-
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
