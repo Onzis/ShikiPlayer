@@ -2,7 +2,7 @@
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
 // @version      1.25.2
-// @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik, с современным уведомлением и выпадающим списком плееров)
+// @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
@@ -65,7 +65,6 @@
     });
   }
 
-  // Современное уведомление — снизу по центру, черное, прозрачное, с блюром
   function showNotification(message, type = "info") {
     if (!document.getElementById('shikip-notif-style-modern')) {
       const style = document.createElement('style');
@@ -275,8 +274,6 @@
     );
   }
 
-  // Остальной код без изменений (autoPlayerChain/manualSwitchPlayer/showPlayer/... и далее)
-
   async function autoPlayerChain(id, playerContainer, episode) {
     try {
       currentPlayer = "turbo";
@@ -352,7 +349,6 @@
     }
   }
 
-  // --- остальные функции без изменений ---
   async function getShikimoriAnimeData(id) {
     const cacheKey = `shikimori_anime_${id}`;
     let cachedData = getCachedData(cacheKey);
