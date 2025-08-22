@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.25.1
+// @version      1.25.2
 // @description  Автоматически загружает видеоплеер для просмотра прямо на Shikimori (Turbo → Alloha → Kodik, с современным уведомлением и выпадающим списком плееров)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -220,7 +220,7 @@
       const style = document.createElement("style");
       style.id = "kodik-styles";
       style.textContent = `
-        .kodik-container { margin: 10px auto; width: 100%; max-width: 900px; }
+        .kodik-container { margin: 40px auto; width: 100%; max-width: 900px; }
         .kodik-header { display: flex; justify-content: space-between; align-items: center; background: #e6e8ea; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #333; border-radius: 6px 6px 0 0; }
         .kodik-links a { text-decoration: none; color: #333; font-size: 11px; }
         .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
