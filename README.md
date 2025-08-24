@@ -16,7 +16,6 @@ ShikiPlayer — это пользовательский скрипт, котор
 1. Установите менеджер пользовательских скриптов, например, [Tampermonkey](https://www.tampermonkey.net/) или [Greasemonkey](https://www.greasespot.net/).
 2. Нажмите [здесь](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js), чтобы установить скрипт.
 3. Перейдите на любую страницу аниме на [Shikimori](https://shikimori.one/) (например, `https://shikimori.one/animes/1234-anime-name`).
-4. Плеер появится в боковой панели или под секцией связанных авторов.
 
 ## Использование
 - Плеер автоматически встраивается на страницы аниме Shikimori.
