@@ -248,30 +248,16 @@
 
     if (observer) observer.disconnect();
 
-    let nextEpisode = 1;
-    let totalEpisodes = 0;
-    try {
-      const shikimoriData = await getShikimoriAnimeData(id);
-      if (shikimoriData) {
-        totalEpisodes = shikimoriData.episodes || shikimoriData.episodes_aired || 0;
-        if (shikimoriData.user_rate?.episodes) {
-          nextEpisode = Math.min(shikimoriData.user_rate.episodes + 1, totalEpisodes || Infinity);
-        }
-      }
-    } catch (error) {
-      playerContainer.querySelector(
-        ".player-wrapper"
-      ).innerHTML = `<div class="error-message">Ошибка загрузки данных. Эпизод 1.</div>`;
-      showNotification("Не удалось загрузить данные аниме. Попробуйте обновить страницу.", "error");
-    }
+    // Всегда используем первую серию
+    const startEpisode = 1;
 
     // Выпадающий список выбора плеера
     playerContainer.querySelector("#player-dropdown").addEventListener("change", (e) => {
-      manualSwitchPlayer(e.target.value, id, playerContainer, nextEpisode);
+      manualSwitchPlayer(e.target.value, id, playerContainer, startEpisode);
     });
 
     setupLazyLoading(playerContainer, () =>
-      autoPlayerChain(id, playerContainer, nextEpisode)
+      autoPlayerChain(id, playerContainer, startEpisode)
     );
   }
 
