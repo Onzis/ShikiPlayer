@@ -40,15 +40,15 @@
 
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
-      isInserting ||
-      !/^\/animes\/[^/]+/.test(location.pathname) ||
-      document.querySelector(".kodik-container")
+    isInserting ||
+    !/^\/animes\/[^/]+/.test(location.pathname) ||
+    document.querySelector(".kodik-container")
     ) {
       return;
     }
 
     const relatedBlock =
-      document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
+    document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
 
     if (!relatedBlock) {
       if (attempts > 0) {
@@ -227,6 +227,84 @@
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
         .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 13px; text-align: center; z-index: 1; }
+        .shikip-changelog {
+          margin-top: 20px;
+          padding: 0;
+          background: rgb(0 0 0 / 40%);
+          border-radius: 8px;
+          backdrop-filter: blur(10px);
+          overflow: hidden;
+          transition: all 0.3s ease;
+          max-height: 40px;
+        }
+        .shikip-changelog.expanded {
+          max-height: 300px;
+          background: rgb(0 0 0 / 40%);
+        }
+        .changelog-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 15px;
+          cursor: pointer;
+          border-bottom: 1px solid rgba(224, 224, 224, 0.4);
+        }
+        .changelog-header:hover {
+          background: rgb(0 0 0 / 15%);
+        }
+        .changelog-header span {
+          font-weight: 600;
+          color: #ffffffb5;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .toggle-icon {
+          font-size: 16px;
+          transition: transform 0.3s ease;
+        }
+        .shikip-changelog.expanded .toggle-icon {
+          transform: rotate(180deg);
+        }
+        .github-link {
+          padding: 4px 10px;
+          background: rgba(51, 51, 51, 0.8);
+          color: white;
+          text-decoration: none;
+          border-radius: 4px;
+          font-size: 12px;
+          transition: background 0.2s;
+        }
+        .github-link:hover {
+          background: rgba(85, 85, 85, 0.9);
+        }
+        .changelog-content {
+          padding: 0 15px;
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+        .shikip-changelog.expanded .changelog-content {
+          max-height: 250px;
+          padding: 15px;
+        }
+        .changelog-content ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        .changelog-content li {
+          margin-bottom: 6px;
+          color: #2b8acc;
+          line-height: 1.4;
+        }
+        @media (max-width: 600px) {
+          .changelog-header {
+            padding: 8px 12px;
+          }
+          .shikip-changelog.expanded .changelog-content {
+            padding: 12px;
+          }
+        }
       `;
       document.head.appendChild(style);
     }
@@ -246,6 +324,39 @@
 
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
 
+    // Добавляем блок с историей изменений
+    const changelogBlock = document.createElement("div");
+    changelogBlock.className = "shikip-changelog";
+    changelogBlock.innerHTML = `
+      <div class="changelog-header">
+        <span>
+          <span class="toggle-icon">▼</span>
+          История изменений
+        </span>
+        <a href="https://github.com/Onzis/ShikiPlayer" target="_blank" class="github-link">
+          GitHub
+        </a>
+      </div>
+      <div class="changelog-content">
+        <ul>
+          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
+          <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
+          <li><strong>v1.25.0</strong> - Добавлен выбор плеера через выпадающий список</li>
+          <li><strong>v1.24.0</strong> - Оптимизирована работа с API Kodik</li>
+          <li><strong>v1.23.0</strong> - Исправлены ошибки в работе Turbo плеера</li>
+          <li><strong>v1.22.0</strong> - Добавлено кеширование запросов</li>
+          <li><strong>v1.21.0</strong> - Улучшена обработка ошибок</li>
+        </ul>
+      </div>
+    `;
+    playerContainer.appendChild(changelogBlock);
+
+    // Добавляем обработчик для сворачивания/разворачивания
+    const header = changelogBlock.querySelector('.changelog-header');
+    header.addEventListener('click', () => {
+      changelogBlock.classList.toggle('expanded');
+    });
+
     if (observer) observer.disconnect();
 
     // Всегда используем первую серию
@@ -257,7 +368,7 @@
     });
 
     setupLazyLoading(playerContainer, () =>
-      autoPlayerChain(id, playerContainer, startEpisode)
+    autoPlayerChain(id, playerContainer, startEpisode)
     );
   }
 
@@ -353,17 +464,6 @@
     }
   }
 
-  async function getShikimoriAnimeData(id) {
-    const cacheKey = `shikimori_anime_${id}`;
-    let cachedData = getCachedData(cacheKey);
-    if (cachedData) return cachedData;
-    try {
-      const response = await gmGetWithTimeout(`https://shikimori.one/api/animes/${id}`);
-      const data = JSON.parse(response);
-      setCachedData(cacheKey, data);
-      return data;
-    } catch (error) { throw error; }
-  }
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -405,10 +505,10 @@
       showNotification("Нет результатов от Kodik API для Alloha.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-    const { kinopoisk_id, imdb_id, last_season = 1 } = results[0];
+    const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
-      ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
-      : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+    ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
+    : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
     if (!allohaUrl) {
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
       throw new Error("Kinopoisk ID или IMDB ID не найдены");
@@ -420,13 +520,8 @@
           const allohaData = JSON.parse(allohaResponse);
           if (allohaData.status === "success" && allohaData.data?.iframe) {
             return allohaData.data.iframe;
-          } else if (
-            allohaData.error_info &&
-            allohaData.error_info.includes('К сожалению, запрашиваемая серия отсутствует')
-          ) { throw new Error('NO_EPISODE'); }
-          else { throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка")); }
+          } else { throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка")); }
         } catch (error) {
-          if (error.message === 'NO_EPISODE') throw error;
           if (i === retries - 1) {
             showNotification("Alloha API недоступен. Попробуйте позже.", "error");
             throw error;
@@ -438,10 +533,9 @@
     try {
       const iframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, iframeUrl);
-      return `${iframeUrl}&episode=${episode}&season=${last_season}`;
+      return `${iframeUrl}&episode=${episode}&season=1`;
     } catch (error) {
       localStorage.removeItem(cacheKey);
-      if (error.message === 'NO_EPISODE') { throw new Error('NO_EPISODE'); }
       showNotification("Ошибка загрузки Alloha: " + error.message, "error");
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
@@ -582,8 +676,8 @@
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
-      video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') === "probably" ||
-      video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
+    video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') === "probably" ||
+    video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
   function setupLazyLoading(container, callback) {
