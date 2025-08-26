@@ -287,7 +287,11 @@
         .shikip-changelog.expanded .changelog-content {
           max-height: 250px;
           padding: 15px;
-        }
+          overflow: auto; /* Enables scrolling if content overflows */
+}
+        .shikip-changelog.expanded .changelog-content::-webkit-scrollbar {
+  display: none; /* Hides scrollbar in WebKit browsers (Chrome, Safari, Edge) */
+}
         .changelog-content ul {
           margin: 0;
           padding-left: 20px;
@@ -339,6 +343,10 @@
       </div>
       <div class="changelog-content">
         <ul>
+          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
+          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
+          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
+          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
           <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
           <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
           <li><strong>v1.25.0</strong> - Добавлен выбор плеера через выпадающий список</li>
