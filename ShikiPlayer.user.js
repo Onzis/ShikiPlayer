@@ -344,10 +344,6 @@
       <div class="changelog-content">
         <ul>
           <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
-          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
-          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
-          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
-          <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
           <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
           <li><strong>v1.25.0</strong> - Добавлен выбор плеера через выпадающий список</li>
           <li><strong>v1.24.0</strong> - Оптимизирована работа с API Kodik</li>
