@@ -228,7 +228,7 @@
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
         .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 13px; text-align: center; z-index: 1; }
         .shikip-changelog {
-          margin-top: 20px;
+          margin-top: 5px;
           padding: 0;
           background: rgb(0 0 0 / 40%);
           border-radius: 8px;
