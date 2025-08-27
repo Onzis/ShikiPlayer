@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.28.1
+// @version      1.29.0
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -344,6 +344,7 @@
       </div>
       <div class="changelog-content">
         <ul>
+          <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
           <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
           <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
           <li><strong>v1.25.0</strong> - Добавлен выбор плеера через выпадающий список</li>
