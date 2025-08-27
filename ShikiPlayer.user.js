@@ -287,6 +287,7 @@
         .shikip-changelog.expanded .changelog-content {
           max-height: 250px;
           padding: 15px;
+          font-size: 16px;
           overflow: auto; /* Enables scrolling if content overflows */
 }
         .shikip-changelog.expanded .changelog-content::-webkit-scrollbar {
