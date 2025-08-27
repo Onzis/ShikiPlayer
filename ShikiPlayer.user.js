@@ -208,7 +208,7 @@
       #player-dropdown:focus {
         background: #000000;
         box-shadow: 0 2px 8px #80b7ff33;
-        border-color: #80b7ff;
+        border-color: #6961ff;
       }
     `;
     document.head.appendChild(style);
