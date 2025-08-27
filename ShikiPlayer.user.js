@@ -202,7 +202,7 @@
         gap: 4px;
       }
       #player-dropdown {
-        background: #f0f2f4;
+        background: #000000;
         transition: background .2s, box-shadow .2s;
       }
       #player-dropdown:focus {
