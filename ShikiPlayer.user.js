@@ -182,7 +182,7 @@
   function playerSelectorHTML(current) {
     return `
       <div class="player-selector-dropdown">
-        <select id="player-dropdown" style="padding:6px 16px;font-size:13px;border-radius:6px;border:1px solid #ccc;outline:none;box-shadow:none;">
+        <select id="player-dropdown" style="padding:6px 16px;font-size:13px;border-radius:6px;border:1px solid #6961ff;outline:none;box-shadow:none;">
           <option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>
           <option value="lumex" ${current === 'lumex' ? 'selected' : ''}>Lumex</option>
           <option value="alloha" ${current === 'alloha' ? 'selected' : ''}>Alloha</option>
@@ -206,7 +206,7 @@
         transition: background .2s, box-shadow .2s;
       }
       #player-dropdown:focus {
-        background: #e6e8ea;
+        background: #000000;
         box-shadow: 0 2px 8px #80b7ff33;
         border-color: #80b7ff;
       }
@@ -221,7 +221,7 @@
       style.id = "kodik-styles";
       style.textContent = `
         .kodik-container { margin: 40px auto; width: 100%; max-width: 900px; }
-        .kodik-header { display: flex; justify-content: space-between; align-items: center; background: #e6e8ea; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #333; border-radius: 6px 6px 0 0; }
+        .kodik-header { display: flex; margin-bottom: 5px; justify-content: space-between; align-items: center; background: #000000; padding: 6px 10px; font-size: 13px; font-weight: 600; color: #ffffff; border-radius: 6px 6px 0 0; }
         .kodik-links a { text-decoration: none; color: #333; font-size: 11px; }
         .player-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; overflow: hidden; border-radius: 0 0 6px 6px; background: #000; }
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
