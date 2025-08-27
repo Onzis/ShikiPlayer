@@ -230,7 +230,7 @@
         .shikip-changelog {
           margin-top: 5px;
           padding: 0;
-          background: rgb(0 0 0 / 40%);
+          background: rgb(0 0 0);
           border-radius: 8px;
           backdrop-filter: blur(10px);
           overflow: hidden;
@@ -239,7 +239,7 @@
         }
         .shikip-changelog.expanded {
           max-height: 300px;
-          background: rgb(0 0 0 / 40%);
+          background: rgb(0 0 0);
         }
         .changelog-header {
           display: flex;
