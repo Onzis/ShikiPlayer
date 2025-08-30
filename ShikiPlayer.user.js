@@ -15,29 +15,24 @@
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
-
 (function () {
   "use strict";
-
   let currentPath = location.pathname;
   let observer = null;
   let currentPlayer = "turbo";
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
-
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
-
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
     isInserting ||
@@ -46,25 +41,20 @@
     ) {
       return;
     }
-
     const relatedBlock =
     document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
-
     if (!relatedBlock) {
       if (attempts > 0) {
         setTimeout(() => insertPlayerContainer(attempts - 1, delay), delay);
       }
       return;
     }
-
     isInserting = true;
     removeOldElements();
-
     createAndInsertPlayer(relatedBlock).finally(() => {
       isInserting = false;
     });
   }
-
   function showNotification(message, type = "info") {
     if (!document.getElementById('shikip-notif-style-modern')) {
       const style = document.createElement('style');
@@ -135,7 +125,6 @@
       `;
       document.head.appendChild(style);
     }
-
     let notifContainer = document.getElementById('shikip-notif-modern-container');
     if (!notifContainer) {
       notifContainer = document.createElement('div');
@@ -143,11 +132,9 @@
       notifContainer.className = 'shikip-notif-modern-container';
       document.body.appendChild(notifContainer);
     }
-
     while (notifContainer.firstChild) {
       notifContainer.removeChild(notifContainer.firstChild);
     }
-
     const icons = {
       success: "✅",
       error: "⛔",
@@ -163,12 +150,10 @@
       <button class="notif-close" title="Закрыть">&times;</button>
     `;
     notifContainer.appendChild(notif);
-
     setTimeout(() => {
       notif.style.opacity = "1";
       notif.style.transform = "none";
     }, 10);
-
     const hide = () => {
       notif.style.opacity = "0";
       notif.style.transform = "translateY(20px)";
@@ -177,7 +162,6 @@
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
-
   // --- Выпадающий список для выбора плеера ---
   function playerSelectorHTML(current) {
     return `
@@ -191,7 +175,6 @@
       </div>
     `;
   }
-
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -214,7 +197,6 @@
     document.head.appendChild(style);
   }
   // ------------------------------------------------
-
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -227,6 +209,15 @@
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
         .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 13px; text-align: center; z-index: 1; }
+        .anime-gif-container {
+          width: 100%;
+          overflow: hidden;
+        }
+        .anime-gif {
+          width: 14%;
+          height: auto;
+          display: block;
+        }
         .shikip-changelog {
           margin-top: 5px;
           padding: 0;
@@ -313,22 +304,21 @@
       `;
       document.head.appendChild(style);
     }
-
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     playerContainer.innerHTML = `
+      <div class="anime-gif-container">
+        <img class="anime-gif" src="https://i.postimg.cc/1t6c0QDn/image.png" alt="Anime GIF">
+      </div>
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
         ${playerSelectorHTML(currentPlayer)}
       </div>
       <div class="player-wrapper"><div class="loader">Загрузка...</div></div>
     `;
-
     const id = getShikimoriID();
     if (!id) return;
-
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
-
     // Добавляем блок с историей изменений
     const changelogBlock = document.createElement("div");
     changelogBlock.className = "shikip-changelog";
@@ -356,28 +346,22 @@
       </div>
     `;
     playerContainer.appendChild(changelogBlock);
-
     // Добавляем обработчик для сворачивания/разворачивания
     const header = changelogBlock.querySelector('.changelog-header');
     header.addEventListener('click', () => {
       changelogBlock.classList.toggle('expanded');
     });
-
     if (observer) observer.disconnect();
-
     // Всегда используем первую серию
     const startEpisode = 1;
-
     // Выпадающий список выбора плеера
     playerContainer.querySelector("#player-dropdown").addEventListener("change", (e) => {
       manualSwitchPlayer(e.target.value, id, playerContainer, startEpisode);
     });
-
     setupLazyLoading(playerContainer, () =>
     autoPlayerChain(id, playerContainer, startEpisode)
     );
   }
-
   // Новый порядок: Turbo > Lumex > Alloha > Kodik
   async function autoPlayerChain(id, playerContainer, episode) {
     try {
@@ -405,12 +389,10 @@
       }
     }
   }
-
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
-
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `<div class="loader">Загрузка...</div>`;
@@ -469,7 +451,6 @@
       throw error;
     }
   }
-
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -608,12 +589,10 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
-
   async function loadLumexPlayer(id, episode) {
     const cacheKey = `lumex_${id}_${episode}`;
     let iframeUrl = getCachedData(cacheKey);
     if (iframeUrl) { return iframeUrl; }
-
     // Получаем kinopoisk_id через Kodik API (как Turbo/Alloha)
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
@@ -678,7 +657,6 @@
       throw new Error("Ошибка загрузки Lumex: " + error.message);
     }
   }
-
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -738,7 +716,6 @@
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
-
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
