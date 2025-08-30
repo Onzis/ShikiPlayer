@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.1
+// @version      1.29.0
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -214,7 +214,7 @@
           overflow: hidden;
         }
         .anime-gif {
-          width: 6%;
+          width: 14%;
           height: auto;
           display: block;
         }
@@ -308,7 +308,7 @@
     playerContainer.classList.add("kodik-container");
     playerContainer.innerHTML = `
       <div class="anime-gif-container">
-        <img class="anime-gif" src="https://i.postimg.cc/zG1NpXC8/884d96abbd037e6cb72d747ee5f2b728c3a802ff5ac4c41f8daa693e7accd431.gif" alt="Anime GIF">
+        <img class="anime-gif" src="https://i.postimg.cc/1t6c0QDn/image.png" alt="Anime GIF">
       </div>
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
