@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.30.0
+// @version      1.29.1
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -23,32 +23,6 @@
   let isInserting = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-  
-  // Функция для получения данных о просмотренных сериях
-  async function getUserRate(animeId) {
-    try {
-      const response = await gmGetWithTimeout(`https://shikimori.one/api/v2/user_rates?target_id=${animeId}&target_type=Anime`);
-      const data = JSON.parse(response);
-      return data.length > 0 ? data[0] : null;
-    } catch (error) {
-      // Если пользователь не авторизован, вернем null
-      if (error.message.includes("HTTP 401")) {
-        return null;
-      }
-      throw error;
-    }
-  }
-  
-  // Функция для получения данных об аниме
-  async function getAnimeData(animeId) {
-    try {
-      const response = await gmGetWithTimeout(`https://shikimori.one/api/animes/${animeId}`);
-      return JSON.parse(response);
-    } catch (error) {
-      throw error;
-    }
-  }
-  
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
@@ -235,6 +209,15 @@
         .player-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 13px; z-index: 1; }
         .error-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0000; font-size: 13px; text-align: center; z-index: 1; }
+        .anime-gif-container {
+          width: 100%;
+          overflow: hidden;
+        }
+        .anime-gif {
+          width: 6%;
+          height: auto;
+          display: block;
+        }
         .shikip-changelog {
           margin-top: 5px;
           padding: 0;
@@ -324,6 +307,9 @@
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     playerContainer.innerHTML = `
+      <div class="anime-gif-container">
+        <img class="anime-gif" src="https://i.postimg.cc/zG1NpXC8/884d96abbd037e6cb72d747ee5f2b728c3a802ff5ac4c41f8daa693e7accd431.gif" alt="Anime GIF">
+      </div>
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
         ${playerSelectorHTML(currentPlayer)}
@@ -348,7 +334,6 @@
       </div>
       <div class="changelog-content">
         <ul>
-          <li><strong>v1.30.0</strong> - Добавлена синхронизация просмотренных серий</li>
           <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
           <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
           <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
@@ -367,31 +352,8 @@
       changelogBlock.classList.toggle('expanded');
     });
     if (observer) observer.disconnect();
-    
-    // Получаем информацию о просмотренных сериях
-    let startEpisode = 1;
-    let episodesCount = 0;
-    
-    try {
-      // Получаем данные об аниме
-      const animeData = await getAnimeData(id);
-      if (animeData && animeData.episodes) {
-        episodesCount = animeData.episodes;
-      }
-      
-      // Получаем информацию о просмотренных сериях
-      const userRate = await getUserRate(id);
-      if (userRate && userRate.episodes !== null && userRate.episodes >= 0) {
-        startEpisode = userRate.episodes + 1;
-        if (episodesCount > 0 && startEpisode > episodesCount) {
-          startEpisode = episodesCount; // Если все серии просмотрены
-        }
-      }
-    } catch (error) {
-      console.error('Ошибка при получении данных о просмотренных сериях:', error);
-      showNotification('Не удалось получить данные о просмотренных сериях', 'warning');
-    }
-    
+    // Всегда используем первую серию
+    const startEpisode = 1;
     // Выпадающий список выбора плеера
     playerContainer.querySelector("#player-dropdown").addEventListener("change", (e) => {
       manualSwitchPlayer(e.target.value, id, playerContainer, startEpisode);
