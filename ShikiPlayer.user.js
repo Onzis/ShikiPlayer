@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.5
+// @version      1.29.7
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -24,6 +24,7 @@
   let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
+
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -31,6 +32,12 @@
     alloha: false,
     kodik: false
   };
+
+  // Функция для определения текущего сезона
+  function getCurrentSeason() {
+    const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
+    return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
+  }
 
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
@@ -46,14 +53,14 @@
 
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
-    isInserting ||
-    !/^\/animes\/[^/]+/.test(location.pathname) ||
-    document.querySelector(".kodik-container")
+      isInserting ||
+      !/^\/animes\/[^/]+/.test(location.pathname) ||
+      document.querySelector(".kodik-container")
     ) {
       return;
     }
     const relatedBlock =
-    document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
+      document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
     if (!relatedBlock) {
       if (attempts > 0) {
         setTimeout(() => insertPlayerContainer(attempts - 1, delay), delay);
@@ -187,10 +194,8 @@
     notif.querySelector('.notif-close').onclick = hide;
   }
 
-  // Обновленная функция для генерации HTML выпадающего списка
   function playerSelectorHTML(current) {
     let optionsHTML = '';
-    // Добавляем только доступные плееры
     if (playerAvailability.turbo) {
       optionsHTML += `<option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>`;
     }
@@ -203,7 +208,6 @@
     if (playerAvailability.kodik) {
       optionsHTML += `<option value="kodik" ${current === 'kodik' ? 'selected' : ''}>Kodik</option>`;
     }
-    // Если ни один плеер не доступен
     if (optionsHTML === '') {
       optionsHTML = '<option value="" disabled>Нет доступных плееров</option>';
     }
@@ -295,15 +299,12 @@
     document.head.appendChild(style);
   }
 
-  // Функция для проверки доступности плееров
   async function checkPlayerAvailability(id) {
-    // Сбрасываем статус доступности
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
     playerAvailability.alloha = false;
     playerAvailability.kodik = false;
 
-    // Проверяем Kodik (базовая проверка)
     try {
       const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
       const kodikData = JSON.parse(kodikResponse);
@@ -314,7 +315,6 @@
       console.warn("Kodik недоступен:", e);
     }
 
-    // Проверяем Turbo
     try {
       await loadTurboPlayer(id, 1);
       playerAvailability.turbo = true;
@@ -322,7 +322,6 @@
       console.warn("Turbo недоступен:", e);
     }
 
-    // Проверяем Lumex
     try {
       await loadLumexPlayer(id, 1);
       playerAvailability.lumex = true;
@@ -330,7 +329,6 @@
       console.warn("Lumex недоступен:", e);
     }
 
-    // Проверяем Alloha
     try {
       await loadAllohaPlayer(id, 1);
       playerAvailability.alloha = true;
@@ -338,7 +336,6 @@
       console.warn("Alloha недоступен:", e);
     }
 
-    // Если текущий плеер недоступен, выбираем первый доступный
     if (!playerAvailability[currentPlayer]) {
       const availablePlayers = Object.keys(playerAvailability).filter(p => playerAvailability[p]);
       if (availablePlayers.length > 0) {
@@ -347,26 +344,21 @@
     }
   }
 
-  // Функция для переключения режима кинотеатра
   function toggleTheaterMode(playerContainer) {
     isTheaterMode = !isTheaterMode;
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
     if (isTheaterMode) {
-      // Включаем режим кинотеатра
       document.body.classList.add('shiki-theater-mode');
       theaterBtn.classList.add('active');
-      // Создаем оверлей для затемнения фона
       const overlay = document.createElement('div');
       overlay.className = 'shiki-theater-overlay';
       overlay.style.opacity = '0';
       document.body.appendChild(overlay);
-      // Анимация появления оверлея
       setTimeout(() => {
         overlay.style.transition = 'opacity 0.5s ease';
         overlay.style.opacity = '1';
       }, 10);
       overlay.onclick = () => toggleTheaterMode(playerContainer);
-      // Перемещаем плеер в оверлей
       const playerWrapper = playerContainer.querySelector('.player-wrapper');
       const iframe = playerWrapper.querySelector('iframe');
       if (iframe) {
@@ -376,23 +368,18 @@
         theaterPlayer.style.opacity = '0';
         theaterPlayer.appendChild(iframe.cloneNode(true));
         overlay.appendChild(theaterPlayer);
-        // Анимация появления плеера
         setTimeout(() => {
           theaterPlayer.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
           theaterPlayer.style.transform = 'scale(1)';
           theaterPlayer.style.opacity = '1';
         }, 100);
-        // Скрываем оригинальный плеер
         playerWrapper.style.display = 'none';
       }
-      // Уведомление о включении режима удалено
     } else {
-      // Выключаем режим кинотеатра
       exitTheaterMode(playerContainer);
     }
   }
 
-  // Функция для выхода из режима кинотеатра
   function exitTheaterMode(playerContainer) {
     isTheaterMode = false;
     document.body.classList.remove('shiki-theater-mode');
@@ -400,16 +387,13 @@
     if (theaterBtn) {
       theaterBtn.classList.remove('active');
     }
-    // Удаляем оверлей с анимацией
     const overlay = document.querySelector('.shiki-theater-overlay');
     if (overlay) {
-      // Возвращаем плеер на место
       const theaterPlayer = overlay.querySelector('.shiki-theater-player');
       const playerWrapper = playerContainer.querySelector('.player-wrapper');
       if (theaterPlayer && playerWrapper) {
         const iframe = theaterPlayer.querySelector('iframe');
         if (iframe) {
-          // Анимация исчезновения
           theaterPlayer.style.transition = 'all 0.3s ease';
           theaterPlayer.style.transform = 'scale(0.9)';
           theaterPlayer.style.opacity = '0';
@@ -417,7 +401,6 @@
             playerWrapper.innerHTML = '';
             playerWrapper.appendChild(iframe);
             playerWrapper.style.display = '';
-            // Анимация появления плеера на месте
             playerWrapper.style.opacity = '0';
             playerWrapper.style.transform = 'scale(0.95)';
             setTimeout(() => {
@@ -428,12 +411,10 @@
           }, 300);
         }
       }
-      // Анимация исчезновения оверлея
       overlay.style.transition = 'opacity 0.3s ease';
       overlay.style.opacity = '0';
       setTimeout(() => overlay.remove(), 300);
     }
-    // Уведомление о выключении режима удалено
   }
 
   async function createAndInsertPlayer(relatedBlock) {
@@ -671,7 +652,6 @@
             transform: translateX(0);
           }
         }
-        /* Стили для режима кинотеатра */
         .shiki-theater-mode {
           overflow: hidden !important;
         }
@@ -769,7 +749,6 @@
       document.head.appendChild(style);
     }
 
-    // Добавляем стили для маленькой кнопки кинотеатра
     if (!document.getElementById('shikip-theater-btn-style')) {
       const style = document.createElement('style');
       style.id = 'shikip-theater-btn-style';
@@ -821,7 +800,6 @@
     const id = getShikimoriID();
     if (!id) return;
 
-    // Сразу создаем контейнер с загрузчиком
     playerContainer.innerHTML = `
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
@@ -835,15 +813,11 @@
       </div>
     `;
 
-    // Сразу добавляем контейнер на страницу
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
 
-    // Теперь в фоне проверяем доступность плееров
     const checkPromise = checkPlayerAvailability(id);
 
-    // После проверки обновляем контейнер
     checkPromise.then(() => {
-      // Если ни один плеер не доступен
       if (!Object.values(playerAvailability).some(Boolean)) {
         playerContainer.innerHTML = `
           <div class="kodik-header">
@@ -857,7 +831,6 @@
         return;
       }
 
-      // Создаем основные элементы
       const headerElement = document.createElement("div");
       headerElement.className = "kodik-header";
       headerElement.innerHTML = `
@@ -876,14 +849,12 @@
         </div>
       `;
 
-      // Создаем контейнер для кнопки кинотеатра
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
       theaterBtnContainer.appendChild(theaterBtn);
 
-      // Создаем блок с историей изменений
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -898,6 +869,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.29.6</strong> - Исправлена работа с сезонами в Alloha</li>
             <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
             <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
             <li><strong>v1.26.0</strong> - Улучшена система уведомлений</li>
@@ -910,16 +882,12 @@
         </div>
       `;
 
-      // Очищаем контейнер
       playerContainer.innerHTML = '';
-
-      // Добавляем элементы в правильном порядке
       playerContainer.appendChild(headerElement);
       playerContainer.appendChild(playerWrapper);
       playerContainer.appendChild(theaterBtnContainer);
       playerContainer.appendChild(changelogBlock);
 
-      // Добавляем обработчик для сворачивания/разворачивания
       const header = changelogBlock.querySelector('.changelog-header');
       header.addEventListener('click', () => {
         changelogBlock.classList.toggle('expanded');
@@ -927,10 +895,8 @@
 
       if (observer) observer.disconnect();
 
-      // Всегда используем первую серию
       const startEpisode = 1;
 
-      // Выпадающий список выбора плеера
       const playerDropdown = playerContainer.querySelector("#player-dropdown");
       if (playerDropdown) {
         playerDropdown.addEventListener("change", (e) => {
@@ -940,13 +906,12 @@
         });
       }
 
-      // Кнопка режима кинотеатра
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
       }
 
       setupLazyLoading(playerContainer, () =>
-      autoPlayerChain(id, playerContainer, startEpisode)
+        autoPlayerChain(id, playerContainer, startEpisode)
       );
     }).catch(error => {
       console.error("Ошибка при проверке доступности плееров:", error);
@@ -962,9 +927,7 @@
     });
   }
 
-  // Обновленная функция автоматического переключения плееров
   async function autoPlayerChain(id, playerContainer, episode) {
-    // Определяем порядок плееров в зависимости от доступности
     const playerOrder = ['turbo', 'lumex', 'alloha', 'kodik'].filter(p => playerAvailability[p]);
     if (playerOrder.length === 0) {
       showNotification("Нет доступных плееров для этого аниме", "error");
@@ -977,7 +940,7 @@
         currentPlayer = playerType;
         playerContainer.querySelector("#player-dropdown").value = playerType;
         await showPlayer(playerType, id, playerContainer, episode);
-        return; // Успешно загружено, выходим из функции
+        return;
       } catch (error) {
         lastError = error;
         console.warn(`Плеер ${playerType} недоступен:`, error);
@@ -985,7 +948,6 @@
       }
     }
 
-    // Если все плееры не сработали
     if (lastError) {
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
@@ -996,7 +958,6 @@
       showNotification(`Плеер ${playerType} недоступен`, "error");
       return;
     }
-
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
@@ -1004,7 +965,6 @@
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
 
-    // Показываем загрузчик
     playerWrapper.innerHTML = `
       <div class="loader">
         <div class="loader-spinner"></div>
@@ -1039,6 +999,26 @@
           const iframeUrl = await loadAllohaPlayer(id, episode);
           iframe.src = iframeUrl;
           iframe.onerror = () => { throw new Error("Alloha 404"); };
+
+          // Добавляем обработчик для проверки ошибки "сезон недоступен"
+          iframe.addEventListener("load", function() {
+            try {
+              const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
+              const errorElements = iframeContent.querySelectorAll('.error, .warning, .not-found');
+
+              for (const el of errorElements) {
+                if (el.textContent.includes("сезон недоступен") ||
+                    el.textContent.includes("сезон не найден") ||
+                    el.textContent.includes("season not available")) {
+                  showNotification("Alloha: запрашиваемый сезон недоступен, переключаюсь на другой плеер...", "warning");
+                  throw new Error("Сезон недоступен в Alloha");
+                }
+              }
+            } catch (e) {
+              // Игнорируем ошибки доступа к iframe (из-за CORS)
+              console.warn("Не удалось проверить содержимое iframe:", e);
+            }
+          });
         } catch (error) {
           throw error;
         }
@@ -1055,11 +1035,9 @@
         throw new Error("Неизвестный тип плеера");
       }
 
-      // Добавляем iframe в контейнер
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
 
-      // Проверяем загрузку плеера
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
@@ -1090,7 +1068,10 @@
 
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
-    if (cached) { const { data } = JSON.parse(cached); return data; }
+    if (cached) {
+      const { data } = JSON.parse(cached);
+      return data;
+    }
     return null;
   }
 
@@ -1099,16 +1080,21 @@
   }
 
   async function loadAllohaPlayer(id, episode) {
-    const cacheKey = `alloha_${id}`;
+    const season = getCurrentSeason();
+    const cacheKey = `alloha_${id}_s${season}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1}`; }
+
+    if (iframeUrl) {
+      return `${iframeUrl}&episode=${episode}&season=${season}`;
+    }
 
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
       try {
         const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
-        kodikData = JSON.parse(kodikResponse); setCachedData(kodikCacheKey, kodikData);
+        kodikData = JSON.parse(kodikResponse);
+        setCachedData(kodikCacheKey, kodikData);
       } catch (error) {
         showNotification("Ошибка загрузки данных Kodik API для Alloha.", "error");
         throw new Error("Ошибка загрузки данных Kodik API");
@@ -1123,8 +1109,8 @@
 
     const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
-    ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
-    : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+      ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
+      : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
 
     if (!allohaUrl) {
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
@@ -1136,9 +1122,12 @@
         try {
           const allohaResponse = await gmGetWithTimeout(allohaUrl);
           const allohaData = JSON.parse(allohaResponse);
+
           if (allohaData.status === "success" && allohaData.data?.iframe) {
             return allohaData.data.iframe;
-          } else { throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка")); }
+          } else {
+            throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
+          }
         } catch (error) {
           if (i === retries - 1) {
             showNotification("Alloha API недоступен. Попробуйте позже.", "error");
@@ -1150,9 +1139,9 @@
     }
 
     try {
-      const iframeUrl = await tryFetchAlloha();
-      setCachedData(cacheKey, iframeUrl);
-      return `${iframeUrl}&episode=${episode}&season=1}`;
+      const allohaIframeUrl = await tryFetchAlloha();
+      setCachedData(cacheKey, allohaIframeUrl);
+      return `${allohaIframeUrl}&episode=${episode}&season=${season}`;
     } catch (error) {
       localStorage.removeItem(cacheKey);
       showNotification("Ошибка загрузки Alloha: " + error.message, "error");
@@ -1305,8 +1294,8 @@
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
-    video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') === "probably" ||
-    video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
+      video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') === "probably" ||
+      video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
 
@@ -1344,22 +1333,18 @@
       }
     };
     setInterval(checkUrlChange, 300);
-
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
       checkUrlChange();
     };
-
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
       checkUrlChange();
     };
-
     window.addEventListener("popstate", checkUrlChange);
 
-    // Добавляем обработчик для выхода из режима кинотеатра по Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && isTheaterMode) {
         const playerContainer = document.querySelector(".kodik-container");
