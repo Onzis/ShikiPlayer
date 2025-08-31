@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.4
+// @version      1.29.5
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -355,21 +355,17 @@
       // Включаем режим кинотеатра
       document.body.classList.add('shiki-theater-mode');
       theaterBtn.classList.add('active');
-
       // Создаем оверлей для затемнения фона
       const overlay = document.createElement('div');
       overlay.className = 'shiki-theater-overlay';
       overlay.style.opacity = '0';
       document.body.appendChild(overlay);
-
       // Анимация появления оверлея
       setTimeout(() => {
         overlay.style.transition = 'opacity 0.5s ease';
         overlay.style.opacity = '1';
       }, 10);
-
       overlay.onclick = () => toggleTheaterMode(playerContainer);
-
       // Перемещаем плеер в оверлей
       const playerWrapper = playerContainer.querySelector('.player-wrapper');
       const iframe = playerWrapper.querySelector('iframe');
@@ -380,18 +376,16 @@
         theaterPlayer.style.opacity = '0';
         theaterPlayer.appendChild(iframe.cloneNode(true));
         overlay.appendChild(theaterPlayer);
-
         // Анимация появления плеера
         setTimeout(() => {
           theaterPlayer.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
           theaterPlayer.style.transform = 'scale(1)';
           theaterPlayer.style.opacity = '1';
         }, 100);
-
         // Скрываем оригинальный плеер
         playerWrapper.style.display = 'none';
       }
-      showNotification("Режим кинотеатра включен", "info");
+      // Уведомление о включении режима удалено
     } else {
       // Выключаем режим кинотеатра
       exitTheaterMode(playerContainer);
@@ -406,7 +400,6 @@
     if (theaterBtn) {
       theaterBtn.classList.remove('active');
     }
-
     // Удаляем оверлей с анимацией
     const overlay = document.querySelector('.shiki-theater-overlay');
     if (overlay) {
@@ -435,13 +428,12 @@
           }, 300);
         }
       }
-
       // Анимация исчезновения оверлея
       overlay.style.transition = 'opacity 0.3s ease';
       overlay.style.opacity = '0';
       setTimeout(() => overlay.remove(), 300);
     }
-    showNotification("Режим кинотеатра выключен", "info");
+    // Уведомление о выключении режима удалено
   }
 
   async function createAndInsertPlayer(relatedBlock) {
@@ -1011,6 +1003,7 @@
 
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
+
     // Показываем загрузчик
     playerWrapper.innerHTML = `
       <div class="loader">
