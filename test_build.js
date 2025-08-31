@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.3
+// @version      1.29.4
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -355,7 +355,6 @@
       // Включаем режим кинотеатра
       document.body.classList.add('shiki-theater-mode');
       theaterBtn.classList.add('active');
-      theaterBtn.innerHTML = '🔍 Обычный режим';
 
       // Создаем оверлей для затемнения фона
       const overlay = document.createElement('div');
@@ -392,7 +391,6 @@
         // Скрываем оригинальный плеер
         playerWrapper.style.display = 'none';
       }
-
       showNotification("Режим кинотеатра включен", "info");
     } else {
       // Выключаем режим кинотеатра
@@ -407,7 +405,6 @@
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
     if (theaterBtn) {
       theaterBtn.classList.remove('active');
-      theaterBtn.innerHTML = '🎬 Кинотеатр';
     }
 
     // Удаляем оверлей с анимацией
@@ -423,12 +420,10 @@
           theaterPlayer.style.transition = 'all 0.3s ease';
           theaterPlayer.style.transform = 'scale(0.9)';
           theaterPlayer.style.opacity = '0';
-
           setTimeout(() => {
             playerWrapper.innerHTML = '';
             playerWrapper.appendChild(iframe);
             playerWrapper.style.display = '';
-
             // Анимация появления плеера на месте
             playerWrapper.style.opacity = '0';
             playerWrapper.style.transform = 'scale(0.95)';
@@ -446,7 +441,6 @@
       overlay.style.opacity = '0';
       setTimeout(() => overlay.remove(), 300);
     }
-
     showNotification("Режим кинотеатра выключен", "info");
   }
 
@@ -796,41 +790,34 @@
           transform: translateY(10px);
           animation: fadeInUp 0.6s ease forwards 0.7s;
         }
-
         .theater-mode-btn-small {
-          background: rgba(255, 255, 255, 0.7);
+          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=65966&format=png&color=000000') no-repeat center;
+          background-size: 80%;
           border: 1px solid rgba(255, 255, 255, 0.5);
-          color: #333;
-          border-radius: 6px;
-          padding: 6px 14px;
-          font-size: 13px;
+          border-radius: 8px;
+          width: 44px;
+          height: 44px;
           cursor: pointer;
           transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          gap: 6px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
         }
-
         .theater-mode-btn-small:hover {
-          background: rgba(255, 255, 255, 0.9);
+          background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
         }
-
         .theater-mode-btn-small.active {
-          background: rgba(105, 97, 255, 0.2);
+          background-color: rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
-          color: #6961ff;
+          filter: brightness(0) invert(1);
         }
-
         @media (max-width: 600px) {
           .theater-mode-btn-small {
-            padding: 5px 12px;
-            font-size: 12px;
+            width: 40px;
+            height: 40px;
           }
         }
       `;
@@ -902,7 +889,6 @@
       theaterBtnContainer.className = 'theater-mode-btn-container';
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-      theaterBtn.textContent = '🎬';
       theaterBtnContainer.appendChild(theaterBtn);
 
       // Создаем блок с историей изменений
@@ -1025,7 +1011,6 @@
 
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
-
     // Показываем загрузчик
     playerWrapper.innerHTML = `
       <div class="loader">
@@ -1123,7 +1108,7 @@
   async function loadAllohaPlayer(id, episode) {
     const cacheKey = `alloha_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1`; }
+    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1}`; }
 
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
