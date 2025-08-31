@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.2
+// @version      1.29.3
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -24,7 +24,6 @@
   let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -191,7 +190,6 @@
   // Обновленная функция для генерации HTML выпадающего списка
   function playerSelectorHTML(current) {
     let optionsHTML = '';
-
     // Добавляем только доступные плееры
     if (playerAvailability.turbo) {
       optionsHTML += `<option value="turbo" ${current === 'turbo' ? 'selected' : ''}>Turbo</option>`;
@@ -205,12 +203,10 @@
     if (playerAvailability.kodik) {
       optionsHTML += `<option value="kodik" ${current === 'kodik' ? 'selected' : ''}>Kodik</option>`;
     }
-
     // Если ни один плеер не доступен
     if (optionsHTML === '') {
       optionsHTML = '<option value="" disabled>Нет доступных плееров</option>';
     }
-
     return `
       <div class="player-selector-dropdown">
         <select id="player-dropdown">
@@ -354,8 +350,7 @@
   // Функция для переключения режима кинотеатра
   function toggleTheaterMode(playerContainer) {
     isTheaterMode = !isTheaterMode;
-    const theaterBtn = playerContainer.querySelector('.theater-mode-btn');
-
+    const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
     if (isTheaterMode) {
       // Включаем режим кинотеатра
       document.body.classList.add('shiki-theater-mode');
@@ -409,8 +404,7 @@
   function exitTheaterMode(playerContainer) {
     isTheaterMode = false;
     document.body.classList.remove('shiki-theater-mode');
-
-    const theaterBtn = playerContainer.querySelector('.theater-mode-btn');
+    const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
     if (theaterBtn) {
       theaterBtn.classList.remove('active');
       theaterBtn.innerHTML = '🎬 Кинотеатр';
@@ -422,7 +416,6 @@
       // Возвращаем плеер на место
       const theaterPlayer = overlay.querySelector('.shiki-theater-player');
       const playerWrapper = playerContainer.querySelector('.player-wrapper');
-
       if (theaterPlayer && playerWrapper) {
         const iframe = theaterPlayer.querySelector('iframe');
         if (iframe) {
@@ -685,14 +678,12 @@
         .changelog-content li:nth-child(6) { animation-delay: 0.6s; }
         .changelog-content li:nth-child(7) { animation-delay: 0.7s; }
         .changelog-content li:nth-child(8) { animation-delay: 0.8s; }
-
         @keyframes slideInLeft {
           to {
             opacity: 1;
             transform: translateX(0);
           }
         }
-
         /* Стили для режима кинотеатра */
         .shiki-theater-mode {
           overflow: hidden !important;
@@ -763,7 +754,6 @@
           transform: scale(1.05) rotate(90deg);
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
-
         @media (max-width: 600px) {
           .changelog-header {
             padding: 10px 12px;
@@ -792,9 +782,62 @@
       document.head.appendChild(style);
     }
 
+    // Добавляем стили для маленькой кнопки кинотеатра
+    if (!document.getElementById('shikip-theater-btn-style')) {
+      const style = document.createElement('style');
+      style.id = 'shikip-theater-btn-style';
+      style.textContent = `
+        .theater-mode-btn-container {
+          display: flex;
+          justify-content: center;
+          margin: 12px 0;
+          opacity: 0;
+          transform: translateY(10px);
+          animation: fadeInUp 0.6s ease forwards 0.7s;
+        }
+
+        .theater-mode-btn-small {
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          color: #333;
+          border-radius: 6px;
+          padding: 6px 14px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+
+        .theater-mode-btn-small:hover {
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
+          border-color: rgba(105, 97, 255, 0.5);
+          transform: translateY(-2px);
+        }
+
+        .theater-mode-btn-small.active {
+          background: rgba(105, 97, 255, 0.2);
+          border-color: rgba(105, 97, 255, 0.5);
+          color: #6961ff;
+        }
+
+        @media (max-width: 600px) {
+          .theater-mode-btn-small {
+            padding: 5px 12px;
+            font-size: 12px;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
-
     const id = getShikimoriID();
     if (!id) return;
 
@@ -834,19 +877,34 @@
         return;
       }
 
-      // Обновляем контейнер с доступными плеерами
-      playerContainer.innerHTML = `
-        <div class="kodik-header">
-          <span>ОНЛАЙН ПРОСМОТР</span>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            ${playerSelectorHTML(currentPlayer)}
-            <button class="theater-mode-btn">🎬 Кинотеатр</button>
-          </div>
+      // Создаем основные элементы
+      const headerElement = document.createElement("div");
+      headerElement.className = "kodik-header";
+      headerElement.innerHTML = `
+        <span>ОНЛАЙН ПРОСМОТР</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          ${playerSelectorHTML(currentPlayer)}
         </div>
-        <div class="player-wrapper"><div class="loader"><div class="loader-spinner"></div><div>Загрузка...</div></div></div>
       `;
 
-      // Добавляем блок с историей изменений
+      const playerWrapper = document.createElement("div");
+      playerWrapper.className = "player-wrapper";
+      playerWrapper.innerHTML = `
+        <div class="loader">
+          <div class="loader-spinner"></div>
+          <div>Загрузка...</div>
+        </div>
+      `;
+
+      // Создаем контейнер для кнопки кинотеатра
+      const theaterBtnContainer = document.createElement('div');
+      theaterBtnContainer.className = 'theater-mode-btn-container';
+      const theaterBtn = document.createElement('button');
+      theaterBtn.className = 'theater-mode-btn-small';
+      theaterBtn.textContent = '🎬';
+      theaterBtnContainer.appendChild(theaterBtn);
+
+      // Создаем блок с историей изменений
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -872,6 +930,14 @@
           </ul>
         </div>
       `;
+
+      // Очищаем контейнер
+      playerContainer.innerHTML = '';
+
+      // Добавляем элементы в правильном порядке
+      playerContainer.appendChild(headerElement);
+      playerContainer.appendChild(playerWrapper);
+      playerContainer.appendChild(theaterBtnContainer);
       playerContainer.appendChild(changelogBlock);
 
       // Добавляем обработчик для сворачивания/разворачивания
@@ -896,7 +962,6 @@
       }
 
       // Кнопка режима кинотеатра
-      const theaterBtn = playerContainer.querySelector('.theater-mode-btn');
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
       }
@@ -922,14 +987,12 @@
   async function autoPlayerChain(id, playerContainer, episode) {
     // Определяем порядок плееров в зависимости от доступности
     const playerOrder = ['turbo', 'lumex', 'alloha', 'kodik'].filter(p => playerAvailability[p]);
-
     if (playerOrder.length === 0) {
       showNotification("Нет доступных плееров для этого аниме", "error");
       return;
     }
 
     let lastError = null;
-
     for (const playerType of playerOrder) {
       try {
         currentPlayer = playerType;
@@ -1025,7 +1088,6 @@
           if (playerType === "lumex") throw new Error("Lumex 404");
         }
       }, 2000);
-
     } catch (error) {
       playerWrapper.innerHTML = `<div class="error-message">Ошибка загрузки плеера ${playerType}: ${error.message}. Попробуйте другой плеер.</div>`;
       showNotification(`Не работает плеер ${playerType}: ${error.message}.`, "error");
@@ -1303,16 +1365,19 @@
       }
     };
     setInterval(checkUrlChange, 300);
+
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
       checkUrlChange();
     };
+
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
       checkUrlChange();
     };
+
     window.addEventListener("popstate", checkUrlChange);
 
     // Добавляем обработчик для выхода из режима кинотеатра по Escape
