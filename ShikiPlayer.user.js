@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.3
+// @version      1.29.5
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -355,22 +355,17 @@
       // Включаем режим кинотеатра
       document.body.classList.add('shiki-theater-mode');
       theaterBtn.classList.add('active');
-      theaterBtn.innerHTML = '🔍 Обычный режим';
-
       // Создаем оверлей для затемнения фона
       const overlay = document.createElement('div');
       overlay.className = 'shiki-theater-overlay';
       overlay.style.opacity = '0';
       document.body.appendChild(overlay);
-
       // Анимация появления оверлея
       setTimeout(() => {
         overlay.style.transition = 'opacity 0.5s ease';
         overlay.style.opacity = '1';
       }, 10);
-
       overlay.onclick = () => toggleTheaterMode(playerContainer);
-
       // Перемещаем плеер в оверлей
       const playerWrapper = playerContainer.querySelector('.player-wrapper');
       const iframe = playerWrapper.querySelector('iframe');
@@ -381,19 +376,16 @@
         theaterPlayer.style.opacity = '0';
         theaterPlayer.appendChild(iframe.cloneNode(true));
         overlay.appendChild(theaterPlayer);
-
         // Анимация появления плеера
         setTimeout(() => {
           theaterPlayer.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
           theaterPlayer.style.transform = 'scale(1)';
           theaterPlayer.style.opacity = '1';
         }, 100);
-
         // Скрываем оригинальный плеер
         playerWrapper.style.display = 'none';
       }
-
-      showNotification("Режим кинотеатра включен", "info");
+      // Уведомление о включении режима удалено
     } else {
       // Выключаем режим кинотеатра
       exitTheaterMode(playerContainer);
@@ -407,9 +399,7 @@
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
     if (theaterBtn) {
       theaterBtn.classList.remove('active');
-      theaterBtn.innerHTML = '🎬 Кинотеатр';
     }
-
     // Удаляем оверлей с анимацией
     const overlay = document.querySelector('.shiki-theater-overlay');
     if (overlay) {
@@ -423,12 +413,10 @@
           theaterPlayer.style.transition = 'all 0.3s ease';
           theaterPlayer.style.transform = 'scale(0.9)';
           theaterPlayer.style.opacity = '0';
-
           setTimeout(() => {
             playerWrapper.innerHTML = '';
             playerWrapper.appendChild(iframe);
             playerWrapper.style.display = '';
-
             // Анимация появления плеера на месте
             playerWrapper.style.opacity = '0';
             playerWrapper.style.transform = 'scale(0.95)';
@@ -440,14 +428,12 @@
           }, 300);
         }
       }
-
       // Анимация исчезновения оверлея
       overlay.style.transition = 'opacity 0.3s ease';
       overlay.style.opacity = '0';
       setTimeout(() => overlay.remove(), 300);
     }
-
-    showNotification("Режим кинотеатра выключен", "info");
+    // Уведомление о выключении режима удалено
   }
 
   async function createAndInsertPlayer(relatedBlock) {
@@ -461,7 +447,7 @@
           max-width: 900px;
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 10px 30px rgb(0 0 0 / 40%);
           opacity: 0;
           transform: translateY(30px);
           animation: containerAppear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
@@ -591,6 +577,7 @@
           padding: 0;
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(12px);
+          border-top: 1px solid #0000004f;
           -webkit-backdrop-filter: blur(12px);
           border-radius: 0 0 16px 16px;
           overflow: hidden;
@@ -607,7 +594,7 @@
           justify-content: space-between;
           align-items: center;
           padding: 1px 16px;
-          margin-top: 5px;
+          margin-top: 1px;
           cursor: pointer;
           border-bottom: 1px solid rgba(255, 255, 255, 0.3);
           transition: background 0.3s ease;
@@ -795,41 +782,34 @@
           transform: translateY(10px);
           animation: fadeInUp 0.6s ease forwards 0.7s;
         }
-
         .theater-mode-btn-small {
-          background: rgba(255, 255, 255, 0.7);
+          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=65966&format=png&color=000000') no-repeat center;
+          background-size: 80%;
           border: 1px solid rgba(255, 255, 255, 0.5);
-          color: #333;
-          border-radius: 6px;
-          padding: 6px 14px;
-          font-size: 13px;
+          border-radius: 8px;
+          width: 44px;
+          height: 44px;
           cursor: pointer;
           transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          gap: 6px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
         }
-
         .theater-mode-btn-small:hover {
-          background: rgba(255, 255, 255, 0.9);
+          background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
         }
-
         .theater-mode-btn-small.active {
-          background: rgba(105, 97, 255, 0.2);
+          background-color: rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
-          color: #6961ff;
+          filter: brightness(0) invert(1);
         }
-
         @media (max-width: 600px) {
           .theater-mode-btn-small {
-            padding: 5px 12px;
-            font-size: 12px;
+            width: 40px;
+            height: 40px;
           }
         }
       `;
@@ -901,7 +881,6 @@
       theaterBtnContainer.className = 'theater-mode-btn-container';
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-      theaterBtn.textContent = '🎬';
       theaterBtnContainer.appendChild(theaterBtn);
 
       // Создаем блок с историей изменений
@@ -1122,7 +1101,7 @@
   async function loadAllohaPlayer(id, episode) {
     const cacheKey = `alloha_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1`; }
+    if (iframeUrl) { return `${iframeUrl}&episode=${episode}&season=1}`; }
 
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
