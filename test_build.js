@@ -614,6 +614,7 @@
           justify-content: space-between;
           align-items: center;
           padding: 1px 16px;
+          margin-top: 5px;
           cursor: pointer;
           border-bottom: 1px solid rgba(255, 255, 255, 0.3);
           transition: background 0.3s ease;
