@@ -591,6 +591,7 @@
           padding: 0;
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(12px);
+          border-top: 1px solid #0000004f;
           -webkit-backdrop-filter: blur(12px);
           border-radius: 0 0 16px 16px;
           overflow: hidden;
@@ -607,7 +608,7 @@
           justify-content: space-between;
           align-items: center;
           padding: 1px 16px;
-          margin-top: 5px;
+          margin-top: 1px;
           cursor: pointer;
           border-bottom: 1px solid rgba(255, 255, 255, 0.3);
           transition: background 0.3s ease;
