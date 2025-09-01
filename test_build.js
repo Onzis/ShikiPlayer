@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.9
+// @version      1.30
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -766,6 +766,7 @@
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
+          position: relative;
         }
         .theater-mode-btn-small:hover {
           background-color: rgba(255, 255, 255, 0.9);
@@ -791,12 +792,31 @@
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           margin-left: 10px;
+          position: relative;
         }
         .add-to-list-btn:hover {
           background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
+        }
+        .tooltip {
+          position: fixed;
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          white-space: nowrap;
+          z-index: 10000;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s, transform 0.3s;
+          transform: translateX(-50%) translateY(-10px);
+        }
+        .tooltip.show {
+          opacity: 1;
+          transform: translateX(-50%) translateY(5px);
         }
         @media (max-width: 600px) {
           .theater-mode-btn-small, .add-to-list-btn {
@@ -859,17 +879,16 @@
       `;
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
-
+      
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-
+      
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
-      addToListBtn.title = 'Добавить в список';
-
+      
       theaterBtnContainer.appendChild(theaterBtn);
       theaterBtnContainer.appendChild(addToListBtn);
-
+      
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -917,6 +936,23 @@
       }
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
+        
+        // Создаем всплывающую подсказку для кнопки театрального режима
+        const theaterTooltip = document.createElement('div');
+        theaterTooltip.className = 'tooltip';
+        theaterTooltip.textContent = 'Театральный режим';
+        document.body.appendChild(theaterTooltip);
+        
+        theaterBtn.addEventListener('mouseenter', () => {
+          const rect = theaterBtn.getBoundingClientRect();
+          theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          theaterTooltip.style.top = `${rect.bottom + 5}px`;
+          theaterTooltip.classList.add('show');
+        });
+        
+        theaterBtn.addEventListener('mouseleave', () => {
+          theaterTooltip.classList.remove('show');
+        });
       }
       if (addToListBtn) {
         addToListBtn.addEventListener('click', () => {
@@ -927,6 +963,23 @@
           } else {
             showNotification('Не найдена кнопка добавления в список', 'warning');
           }
+        });
+        
+        // Создаем всплывающую подсказку для кнопки добавления в список
+        const addToListTooltip = document.createElement('div');
+        addToListTooltip.className = 'tooltip';
+        addToListTooltip.textContent = 'Добавить в список';
+        document.body.appendChild(addToListTooltip);
+        
+        addToListBtn.addEventListener('mouseenter', () => {
+          const rect = addToListBtn.getBoundingClientRect();
+          addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          addToListTooltip.style.top = `${rect.bottom + 5}px`;
+          addToListTooltip.classList.add('show');
+        });
+        
+        addToListBtn.addEventListener('mouseleave', () => {
+          addToListTooltip.classList.remove('show');
         });
       }
       setupLazyLoading(playerContainer, () =>
