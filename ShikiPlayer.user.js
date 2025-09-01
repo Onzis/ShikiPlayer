@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.30
+// @version      1.38
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -24,6 +24,15 @@
   let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
+  // Объект для хранения настроек
+  const playerSettings = {
+    rememberQuality: localStorage.getItem('shiki-remember-quality') === 'true',
+    defaultQuality: localStorage.getItem('shiki-default-quality') || 'auto',
+    defaultPlayer: localStorage.getItem('shiki-default-player') || 'turbo',
+    playerOrder: JSON.parse(localStorage.getItem('shiki-player-order')) || ['turbo', 'lumex', 'alloha', 'kodik'],
+    disableNotifications: localStorage.getItem('shiki-disable-notifications') === 'true',
+    theme: localStorage.getItem('shiki-theme') || 'dark'
+  };
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -31,25 +40,21 @@
     alloha: false,
     kodik: false
   };
-
   // Функция для определения текущего сезона
   function getCurrentSeason() {
     const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
     return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
   }
-
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
-
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
-
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
       isInserting ||
@@ -72,8 +77,8 @@
       isInserting = false;
     });
   }
-
   function showNotification(message, type = "info") {
+    if (playerSettings.disableNotifications) return;
     if (!document.getElementById('shikip-notif-style-modern')) {
       const style = document.createElement('style');
       style.id = 'shikip-notif-style-modern';
@@ -192,7 +197,6 @@
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
-
   function playerSelectorHTML(current) {
     let optionsHTML = '';
     if (playerAvailability.turbo) {
@@ -218,7 +222,6 @@
       </div>
     `;
   }
-
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -297,7 +300,6 @@
     `;
     document.head.appendChild(style);
   }
-
   async function checkPlayerAvailability(id) {
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
@@ -337,7 +339,6 @@
       }
     }
   }
-
   function toggleTheaterMode(playerContainer) {
     isTheaterMode = !isTheaterMode;
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
@@ -373,7 +374,6 @@
       exitTheaterMode(playerContainer);
     }
   }
-
   function exitTheaterMode(playerContainer) {
     isTheaterMode = false;
     document.body.classList.remove('shiki-theater-mode');
@@ -410,7 +410,6 @@
       setTimeout(() => overlay.remove(), 300);
     }
   }
-
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -663,15 +662,15 @@
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.95);
+          background: rgba(0, 0, 0, 0.7);
           z-index: 9999;
           display: flex;
           justify-content: center;
           align-items: center;
           padding: 20px;
           box-sizing: border-box;
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(5px);
+          -webkit-backdrop-filter: blur(5px);
         }
         .shiki-theater-player {
           width: 80%;
@@ -715,6 +714,89 @@
           transform: scale(1.05) rotate(90deg);
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
+        /* Темная тема (по умолчанию) */
+        .kodik-container.dark-theme {
+          background: rgba(30, 30, 40, 0.9);
+        }
+        .kodik-container.dark-theme .kodik-header {
+          background: rgba(40, 40, 50, 0.8);
+          color: #fff;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .kodik-container.dark-theme .player-wrapper {
+          background: #000;
+        }
+        .kodik-container.dark-theme .loader {
+          color: #fff;
+        }
+        .kodik-container.dark-theme .loader-spinner {
+          border: 4px solid rgba(255, 255, 255, 0.1);
+          border-top-color: #6961ff;
+        }
+        .kodik-container.dark-theme .shikip-changelog {
+          background: rgba(40, 40, 50, 0.8);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .kodik-container.dark-theme .changelog-header {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .kodik-container.dark-theme .changelog-header span {
+          color: #fff;
+        }
+        .kodik-container.dark-theme .changelog-content li {
+          color: #a99bff;
+        }
+        .kodik-container.dark-theme .player-selector-dropdown #player-dropdown {
+          background: rgba(40, 40, 50, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+        .kodik-container.dark-theme .player-selector-dropdown #player-dropdown:focus {
+          background: rgba(50, 50, 60, 0.9);
+          border-color: #6961ff;
+        }
+        /* Светлая тема */
+        .kodik-container.light-theme {
+          background: rgba(245, 245, 250, 0.95);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        .kodik-container.light-theme .kodik-header {
+          background: rgba(255, 255, 255, 0.95);
+          color: #333;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .kodik-container.light-theme .player-wrapper {
+          background: #fff;
+        }
+        .kodik-container.light-theme .loader {
+          color: #333;
+        }
+        .kodik-container.light-theme .loader-spinner {
+          border: 4px solid rgba(0, 0, 0, 0.1);
+          border-top-color: #6961ff;
+        }
+        .kodik-container.light-theme .shikip-changelog {
+          background: rgba(255, 255, 255, 0.95);
+          border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .kodik-container.light-theme .changelog-header {
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .kodik-container.light-theme .changelog-header span {
+          color: #333;
+        }
+        .kodik-container.light-theme .changelog-content li {
+          color: #6961ff;
+        }
+        .kodik-container.light-theme .player-selector-dropdown #player-dropdown {
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          color: #333;
+        }
+        .kodik-container.light-theme .player-selector-dropdown #player-dropdown:focus {
+          background: #fff;
+          border-color: #6961ff;
+        }
         @media (max-width: 600px) {
           .changelog-header {
             padding: 10px 12px;
@@ -754,9 +836,10 @@
           transform: translateY(10px);
           animation: fadeInUp 0.6s ease forwards 0.7s;
         }
-        .theater-mode-btn-small {
-          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=65966&format=png&color=000000') no-repeat center;
-          background-size: 80%;
+        .theater-mode-btn-small,
+        .add-to-list-btn,
+        .settings-btn {
+          background: rgba(255, 255, 255, 0.7);
           border: 1px solid rgba(255, 255, 255, 0.5);
           border-radius: 8px;
           width: 44px;
@@ -767,8 +850,21 @@
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           position: relative;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: #000;
         }
-        .theater-mode-btn-small:hover {
+        .theater-mode-btn-small svg,
+        .add-to-list-btn svg,
+        .settings-btn svg {
+          width: 24px;
+          height: 24px;
+          pointer-events: none;
+        }
+        .theater-mode-btn-small:hover,
+        .add-to-list-btn:hover,
+        .settings-btn:hover {
           background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
@@ -777,28 +873,10 @@
         .theater-mode-btn-small.active {
           background-color: rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
-          filter: brightness(0) invert(1);
         }
-        .add-to-list-btn {
-          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=UBMhbvNpcoAM&format=png&color=000000') no-repeat center;
-          background-size: 70%;
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          border-radius: 8px;
-          width: 44px;
-          height: 44px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
+        .add-to-list-btn,
+        .settings-btn {
           margin-left: 10px;
-          position: relative;
-        }
-        .add-to-list-btn:hover {
-          background-color: rgba(255, 255, 255, 0.9);
-          box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
-          border-color: rgba(105, 97, 255, 0.5);
-          transform: translateY(-2px);
         }
         .tooltip {
           position: fixed;
@@ -818,13 +896,340 @@
           opacity: 1;
           transform: translateX(-50%) translateY(5px);
         }
+        .settings-modal {
+          display: none;
+          position: fixed;
+          z-index: 10000;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(5px);
+          animation: fadeIn 0.3s ease;
+        }
+        .settings-modal-content {
+          background-color: rgba(255, 255, 255, 0.95);
+          margin: 5% auto;
+          padding: 25px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          width: 90%;
+          max-width: 600px;
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          animation: slideIn 0.4s ease;
+          max-height: 85vh;
+          display: flex;
+          flex-direction: column;
+        }
+        @keyframes slideIn {
+          from { transform: translateY(-50px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .settings-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .settings-header h2 {
+          margin: 0;
+          color: #333;
+          font-size: 24px;
+        }
+        .close-settings {
+          color: #666;
+          font-size: 28px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .close-settings:hover {
+          color: #333;
+          transform: rotate(90deg);
+        }
+        .settings-body {
+          overflow-y: auto;
+          flex-grow: 1;
+          padding-right: 5px;
+        }
+        .settings-body::-webkit-scrollbar {
+          width: 8px;
+        }
+        .settings-body::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 4px;
+        }
+        .settings-body::-webkit-scrollbar-thumb {
+          background: rgba(105, 97, 255, 0.3);
+          border-radius: 4px;
+        }
+        .settings-body::-webkit-scrollbar-thumb:hover {
+          background: rgba(105, 97, 255, 0.5);
+        }
+        .settings-section {
+          margin-bottom: 25px;
+        }
+        .settings-section h3 {
+          margin-top: 0;
+          margin-bottom: 15px;
+          color: #444;
+          font-size: 18px;
+        }
+        .settings-option {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .settings-option:last-child {
+          border-bottom: none;
+        }
+        .settings-option label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          color: #333;
+        }
+        .settings-option input[type="checkbox"] {
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+        }
+        .settings-option select {
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.8);
+          color: #333;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .settings-info {
+          background: rgba(105, 97, 255, 0.1);
+          border-left: 4px solid #6961ff;
+          padding: 15px;
+          border-radius: 0 8px 8px 0;
+          margin-top: 20px;
+          font-size: 14px;
+          color: #555;
+        }
+        .settings-save-btn {
+          background: #6961ff;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s;
+          margin-top: 15px;
+          width: 100%;
+        }
+        .settings-save-btn:hover {
+          background: #5a52e0;
+          transform: translateY(-2px);
+        }
+        .player-order-container {
+          margin-top: 10px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.8);
+        }
+        .player-order-item {
+          display: flex;
+          align-items: center;
+          padding: 10px 15px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+          cursor: move;
+          transition: background 0.2s;
+        }
+        .player-order-item:last-child {
+          border-bottom: none;
+        }
+        .player-order-item:hover {
+          background: rgba(105, 97, 255, 0.1);
+        }
+        .player-order-item.dragging {
+          opacity: 0.5;
+        }
+        .player-order-item.drag-over {
+          border-top: 2px solid #6961ff;
+        }
+        .drag-handle {
+          margin-right: 10px;
+          color: #999;
+          cursor: grab;
+        }
+        .drag-handle:active {
+          cursor: grabbing;
+        }
+        .player-name {
+          flex-grow: 1;
+          font-weight: 500;
+        }
+        .theme-selector {
+          display: flex;
+          gap: 10px;
+        }
+        .theme-option {
+          flex: 1;
+          padding: 10px;
+          border-radius: 8px;
+          border: 2px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.8);
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .theme-option:hover {
+          border-color: #6961ff;
+        }
+        .theme-option.selected {
+          border-color: #6961ff;
+          background: rgba(105, 97, 255, 0.1);
+        }
+        .theme-icon {
+          font-size: 24px;
+          margin-bottom: 5px;
+        }
+        /* Темная тема для модального окна настроек */
+        .settings-modal.dark-theme .settings-modal-content {
+          background-color: rgba(40, 40, 50, 0.95);
+          color: #fff;
+        }
+        .settings-modal.dark-theme .settings-header {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .settings-modal.dark-theme .settings-header h2 {
+          color: #fff;
+        }
+        .settings-modal.dark-theme .close-settings {
+          color: #ccc;
+        }
+        .settings-modal.dark-theme .close-settings:hover {
+          color: #fff;
+        }
+        .settings-modal.dark-theme .settings-section h3 {
+          color: #ddd;
+        }
+        .settings-modal.dark-theme .settings-option {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .settings-modal.dark-theme .settings-option label {
+          color: #fff;
+        }
+        .settings-modal.dark-theme .settings-option select {
+          background: rgba(50, 50, 60, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+        .settings-modal.dark-theme .player-order-container {
+          background: rgba(50, 50, 60, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .settings-modal.dark-theme .player-order-item {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .settings-modal.dark-theme .player-order-item:hover {
+          background: rgba(105, 97, 255, 0.2);
+        }
+        .settings-modal.dark-theme .theme-option {
+          background: rgba(50, 50, 60, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+        .settings-modal.dark-theme .theme-option:hover {
+          border-color: #6961ff;
+        }
+        .settings-modal.dark-theme .theme-option.selected {
+          background: rgba(105, 97, 255, 0.2);
+          border-color: #6961ff;
+        }
+        .settings-modal.dark-theme .settings-info {
+          background: rgba(105, 97, 255, 0.2);
+          border-left: 4px solid #6961ff;
+          color: #ddd;
+        }
+        .settings-modal.dark-theme .settings-body::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .settings-modal.dark-theme .settings-body::-webkit-scrollbar-thumb {
+          background: rgba(105, 97, 255, 0.4);
+        }
+        .settings-modal.dark-theme .settings-body::-webkit-scrollbar-thumb:hover {
+          background: rgba(105, 97, 255, 0.6);
+        }
+        
+        /* Темная тема для кнопок */
+        .kodik-container.dark-theme .theater-mode-btn-small,
+        .kodik-container.dark-theme .add-to-list-btn,
+        .kodik-container.dark-theme .settings-btn {
+          background: rgba(40, 40, 50, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+        .kodik-container.dark-theme .theater-mode-btn-small:hover,
+        .kodik-container.dark-theme .add-to-list-btn:hover,
+        .kodik-container.dark-theme .settings-btn:hover {
+          background: rgba(50, 50, 60, 0.9);
+          border-color: #6961ff;
+        }
+        .kodik-container.dark-theme .theater-mode-btn-small.active {
+          background: rgba(105, 97, 255, 0.3);
+          border-color: #6961ff;
+        }
+        
+        /* Светлая тема для кнопок */
+        .kodik-container.light-theme .theater-mode-btn-small,
+        .kodik-container.light-theme .add-to-list-btn,
+        .kodik-container.light-theme .settings-btn {
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          color: #000;
+        }
+        .kodik-container.light-theme .theater-mode-btn-small:hover,
+        .kodik-container.light-theme .add-to-list-btn:hover,
+        .kodik-container.light-theme .settings-btn:hover {
+          background: #fff;
+          border-color: #6961ff;
+        }
+        .kodik-container.light-theme .theater-mode-btn-small.active {
+          background: rgba(105, 97, 255, 0.2);
+          border-color: #6961ff;
+        }
+        
         @media (max-width: 600px) {
-          .theater-mode-btn-small, .add-to-list-btn {
+          .theater-mode-btn-small, .add-to-list-btn, .settings-btn {
             width: 40px;
             height: 40px;
           }
-          .add-to-list-btn {
-            background-size: 65%;
+          .theater-mode-btn-small svg,
+          .add-to-list-btn svg,
+          .settings-btn svg {
+            width: 20px;
+            height: 20px;
+          }
+          .settings-modal-content {
+            width: 95%;
+            margin: 10% auto;
+            padding: 20px;
+            max-height: 90vh;
+          }
+          .settings-header h2 {
+            font-size: 20px;
+          }
+          .settings-option {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .settings-option select {
+            width: 100%;
           }
         }
       `;
@@ -832,6 +1237,8 @@
     }
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
+    // Применяем сохраненную тему
+    playerContainer.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
     const id = getShikimoriID();
     if (!id) return;
     playerContainer.innerHTML = `
@@ -879,16 +1286,24 @@
       `;
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
-
+      
+      // Создаем кнопки с SVG иконками
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-
+      theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+      
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
-
+      addToListBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+      
+      const settingsBtn = document.createElement('button');
+      settingsBtn.className = 'settings-btn';
+      settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
+      
       theaterBtnContainer.appendChild(theaterBtn);
       theaterBtnContainer.appendChild(addToListBtn);
-
+      theaterBtnContainer.appendChild(settingsBtn);
+      
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -903,6 +1318,14 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.38</strong> - Исправлены иконки кнопок и тема настроек</li>
+            <li><strong>v1.37</strong> - Исправлено переключение тем плеера</li>
+            <li><strong>v1.36</strong> - Добавлена возможность выбора темы плеера (светлая/темная)</li>
+            <li><strong>v1.35</strong> - Исправлен театральный режим: добавлено затемнение фона с видимостью страницы</li>
+            <li><strong>v1.34</strong> - Исправлен порядок блоков в настройках | Добавлена прокрутка для настроек</li>
+            <li><strong>v1.33</strong> - Добавлены настройки: плеер по умолчанию, порядок плееров, отключение уведомлений</li>
+            <li><strong>v1.32</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
+            <li><strong>v1.31</strong> - Добавлена кнопка настроек плеера с возможностью сохранения предпочтений</li>
             <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с режимом кинотеатра и добавление серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
             <li><strong>v1.29.6</strong> - Исправлена работа с сезонами в Alloha</li>
             <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
@@ -937,20 +1360,17 @@
       }
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
-
         // Создаем всплывающую подсказку для кнопки театрального режима
         const theaterTooltip = document.createElement('div');
         theaterTooltip.className = 'tooltip';
         theaterTooltip.textContent = 'Театральный режим';
         document.body.appendChild(theaterTooltip);
-
         theaterBtn.addEventListener('mouseenter', () => {
           const rect = theaterBtn.getBoundingClientRect();
           theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
           theaterTooltip.style.top = `${rect.bottom + 5}px`;
           theaterTooltip.classList.add('show');
         });
-
         theaterBtn.addEventListener('mouseleave', () => {
           theaterTooltip.classList.remove('show');
         });
@@ -965,22 +1385,220 @@
             showNotification('Не найдена кнопка добавления серии в просмотрено', 'warning');
           }
         });
-
         // Создаем всплывающую подсказку для кнопки добавления в список
         const addToListTooltip = document.createElement('div');
         addToListTooltip.className = 'tooltip';
         addToListTooltip.textContent = 'Добавить серию в просмотрено';
         document.body.appendChild(addToListTooltip);
-
         addToListBtn.addEventListener('mouseenter', () => {
           const rect = addToListBtn.getBoundingClientRect();
           addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
           addToListTooltip.style.top = `${rect.bottom + 5}px`;
           addToListTooltip.classList.add('show');
         });
-
         addToListBtn.addEventListener('mouseleave', () => {
           addToListTooltip.classList.remove('show');
+        });
+      }
+      if (settingsBtn) {
+        // Создаем модальное окно настроек
+        let settingsModal = document.getElementById('player-settings-modal');
+        if (!settingsModal) {
+          settingsModal = document.createElement('div');
+          settingsModal.id = 'player-settings-modal';
+          settingsModal.className = 'settings-modal';
+          // Применяем тему к модальному окну
+          settingsModal.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
+          settingsModal.innerHTML = `
+            <div class="settings-modal-content">
+              <div class="settings-header">
+                <h2>Настройки плеера</h2>
+                <span class="close-settings">&times;</span>
+              </div>
+              <div class="settings-body">
+                <div class="settings-section">
+                  <h3>Плееры</h3>
+                  <div class="settings-option">
+                    <label>
+                      Плеер по умолчанию:
+                      <select id="default-player">
+                        <option value="turbo" ${playerSettings.defaultPlayer === 'turbo' ? 'selected' : ''}>Turbo</option>
+                        <option value="lumex" ${playerSettings.defaultPlayer === 'lumex' ? 'selected' : ''}>Lumex</option>
+                        <option value="alloha" ${playerSettings.defaultPlayer === 'alloha' ? 'selected' : ''}>Alloha</option>
+                        <option value="kodik" ${playerSettings.defaultPlayer === 'kodik' ? 'selected' : ''}>Kodik</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="settings-option">
+                    <label>
+                      Порядок плееров:
+                    </label>
+                  </div>
+                  <div class="player-order-container" id="player-order-container">
+                    ${playerSettings.playerOrder.map(player => `
+                      <div class="player-order-item" draggable="true" data-player="${player}">
+                        <span class="drag-handle">☰</span>
+                        <span class="player-name">${player.charAt(0).toUpperCase() + player.slice(1)}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <h3>Воспроизведение</h3>
+                  <div class="settings-option">
+                    <label>
+                      <input type="checkbox" id="remember-quality" ${playerSettings.rememberQuality ? 'checked' : ''}>
+                      Запоминать качество видео
+                    </label>
+                  </div>
+                  <div class="settings-option">
+                    <label>
+                      Качество по умолчанию:
+                      <select id="default-quality">
+                        <option value="auto" ${playerSettings.defaultQuality === 'auto' ? 'selected' : ''}>Авто</option>
+                        <option value="1080" ${playerSettings.defaultQuality === '1080' ? 'selected' : ''}>1080p</option>
+                        <option value="720" ${playerSettings.defaultQuality === '720' ? 'selected' : ''}>720p</option>
+                        <option value="480" ${playerSettings.defaultQuality === '480' ? 'selected' : ''}>480p</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <h3>Внешний вид</h3>
+                  <div class="settings-option">
+                    <label>
+                      Тема плеера:
+                    </label>
+                  </div>
+                  <div class="theme-selector">
+                    <div class="theme-option ${playerSettings.theme === 'dark' ? 'selected' : ''}" data-theme="dark">
+                      <div class="theme-icon">🌙</div>
+                      <div>Темная</div>
+                    </div>
+                    <div class="theme-option ${playerSettings.theme === 'light' ? 'selected' : ''}" data-theme="light">
+                      <div class="theme-icon">☀️</div>
+                      <div>Светлая</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <h3>Уведомления</h3>
+                  <div class="settings-option">
+                    <label>
+                      <input type="checkbox" id="disable-notifications" ${playerSettings.disableNotifications ? 'checked' : ''}>
+                      Отключить уведомления
+                    </label>
+                  </div>
+                </div>
+                <div class="settings-info">
+                  <p>Примечание: Некоторые настройки могут не поддерживаться всеми плеерами.</p>
+                </div>
+              </div>
+              <button class="settings-save-btn">Сохранить настройки</button>
+            </div>
+          `;
+          document.body.appendChild(settingsModal);
+          // Обработчики событий для выбора темы
+          const themeOptions = settingsModal.querySelectorAll('.theme-option');
+          themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+              themeOptions.forEach(opt => opt.classList.remove('selected'));
+              option.classList.add('selected');
+            });
+          });
+          // Обработчики событий для drag and drop
+          const playerOrderContainer = document.getElementById('player-order-container');
+          let draggedItem = null;
+          playerOrderContainer.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('player-order-item')) {
+              draggedItem = e.target;
+              e.target.classList.add('dragging');
+            }
+          });
+          playerOrderContainer.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('player-order-item')) {
+              e.target.classList.remove('dragging');
+            }
+          });
+          playerOrderContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(playerOrderContainer, e.clientY);
+            if (afterElement == null) {
+              playerOrderContainer.appendChild(draggedItem);
+            } else {
+              playerOrderContainer.insertBefore(draggedItem, afterElement);
+            }
+          });
+          function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.player-order-item:not(.dragging)')];
+            return draggableElements.reduce((closest, child) => {
+              const box = child.getBoundingClientRect();
+              const offset = y - box.top - box.height / 2;
+              if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+              } else {
+                return closest;
+              }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+          }
+          // Обработчики событий
+          const closeBtn = settingsModal.querySelector('.close-settings');
+          closeBtn.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+          });
+          window.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+              settingsModal.style.display = 'none';
+            }
+          });
+          const saveBtn = settingsModal.querySelector('.settings-save-btn');
+          saveBtn.addEventListener('click', () => {
+            // Сохранение настроек
+            playerSettings.rememberQuality = document.getElementById('remember-quality').checked;
+            playerSettings.defaultQuality = document.getElementById('default-quality').value;
+            playerSettings.defaultPlayer = document.getElementById('default-player').value;
+            playerSettings.disableNotifications = document.getElementById('disable-notifications').checked;
+            // Сохранение темы
+            const selectedTheme = settingsModal.querySelector('.theme-option.selected');
+            if (selectedTheme) {
+              playerSettings.theme = selectedTheme.dataset.theme;
+            }
+            // Сохранение порядка плееров
+            const playerOrderItems = document.querySelectorAll('.player-order-item');
+            playerSettings.playerOrder = Array.from(playerOrderItems).map(item => item.dataset.player);
+            // Сохранение в localStorage
+            localStorage.setItem('shiki-remember-quality', playerSettings.rememberQuality);
+            localStorage.setItem('shiki-default-quality', playerSettings.defaultQuality);
+            localStorage.setItem('shiki-default-player', playerSettings.defaultPlayer);
+            localStorage.setItem('shiki-player-order', JSON.stringify(playerSettings.playerOrder));
+            localStorage.setItem('shiki-disable-notifications', playerSettings.disableNotifications);
+            localStorage.setItem('shiki-theme', playerSettings.theme);
+            // Применение темы
+            applyTheme(playerContainer, playerSettings.theme);
+            // Применение темы к модальному окну
+            applyModalTheme(settingsModal, playerSettings.theme);
+            showNotification('Настройки сохранены', 'success');
+            settingsModal.style.display = 'none';
+          });
+        }
+        settingsBtn.addEventListener('click', () => {
+          // Обновляем тему модального окна перед открытием
+          applyModalTheme(settingsModal, playerSettings.theme);
+          settingsModal.style.display = 'block';
+        });
+        // Создаем всплывающую подсказку для кнопки настроек
+        const settingsTooltip = document.createElement('div');
+        settingsTooltip.className = 'tooltip';
+        settingsTooltip.textContent = 'Настройки плеера';
+        document.body.appendChild(settingsTooltip);
+        settingsBtn.addEventListener('mouseenter', () => {
+          const rect = settingsBtn.getBoundingClientRect();
+          settingsTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          settingsTooltip.style.top = `${rect.bottom + 5}px`;
+          settingsTooltip.classList.add('show');
+        });
+        settingsBtn.addEventListener('mouseleave', () => {
+          settingsTooltip.classList.remove('show');
         });
       }
       setupLazyLoading(playerContainer, () =>
@@ -999,15 +1617,47 @@
       `;
     });
   }
-
+  // Функция для применения темы к плееру
+  function applyTheme(playerContainer, theme) {
+    // Удаляем оба класса темы
+    playerContainer.classList.remove('light-theme');
+    playerContainer.classList.remove('dark-theme');
+    // Добавляем класс выбранной темы
+    if (theme === 'light') {
+      playerContainer.classList.add('light-theme');
+    } else {
+      playerContainer.classList.add('dark-theme');
+    }
+  }
+  // Функция для применения темы к модальному окну настроек
+  function applyModalTheme(settingsModal, theme) {
+    // Удаляем оба класса темы
+    settingsModal.classList.remove('light-theme');
+    settingsModal.classList.remove('dark-theme');
+    // Добавляем класс выбранной темы
+    if (theme === 'light') {
+      settingsModal.classList.add('light-theme');
+    } else {
+      settingsModal.classList.add('dark-theme');
+    }
+  }
   async function autoPlayerChain(id, playerContainer, episode) {
-    const playerOrder = ['turbo', 'lumex', 'alloha', 'kodik'].filter(p => playerAvailability[p]);
+    // Используем порядок из настроек, но фильтруем только доступные плееры
+    const playerOrder = playerSettings.playerOrder.filter(p => playerAvailability[p]);
     if (playerOrder.length === 0) {
       showNotification("Нет доступных плееров для этого аниме", "error");
       return;
     }
+    // Если есть плеер по умолчанию и он доступен, начинаем с него
+    let startIndex = 0;
+    if (playerAvailability[playerSettings.defaultPlayer]) {
+      startIndex = playerOrder.indexOf(playerSettings.defaultPlayer);
+      if (startIndex === -1) startIndex = 0;
+    }
+    // Создаем новый порядок, начиная с плеера по умолчанию
+    const orderedPlayers = [...playerOrder.slice(startIndex), ...playerOrder.slice(0, startIndex)];
     let lastError = null;
-    for (const playerType of playerOrder) {
+    for (const playerType of orderedPlayers) {
       try {
         currentPlayer = playerType;
         playerContainer.querySelector("#player-dropdown").value = playerType;
@@ -1023,7 +1673,6 @@
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
   }
-
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     if (!playerAvailability[playerType]) {
       showNotification(`Плеер ${playerType} недоступен`, "error");
@@ -1032,7 +1681,6 @@
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
-
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `
@@ -1114,7 +1762,6 @@
       throw error;
     }
   }
-
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -1128,7 +1775,6 @@
       });
     });
   }
-
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -1137,11 +1783,9 @@
     }
     return null;
   }
-
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
-
   async function loadAllohaPlayer(id, episode) {
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
@@ -1203,7 +1847,6 @@
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
-
   async function loadTurboPlayer(id, episode) {
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
@@ -1266,7 +1909,6 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
-
   async function loadLumexPlayer(id, episode) {
     const cacheKey = `lumex_${id}_${episode}`;
     let iframeUrl = getCachedData(cacheKey);
@@ -1333,7 +1975,6 @@
       throw new Error("Ошибка загрузки Lumex: " + error.message);
     }
   }
-
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -1341,7 +1982,6 @@
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
-
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1354,7 +1994,6 @@
     );
     observer.observe(container);
   }
-
   function setupDOMObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(() => {
@@ -1365,7 +2004,6 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
-
   function watchURLChanges() {
     let lastPath = location.pathname;
     const checkUrlChange = () => {
@@ -1396,17 +2034,14 @@
       }
     });
   }
-
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
-
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
-
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
