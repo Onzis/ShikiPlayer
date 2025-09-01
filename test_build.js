@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.30
+// @version      1.30.1
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
 // @updateURL    https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
-// @downloadURL  https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
+// @downloadURL    https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @connect      api.alloha.tv
 // @connect      kodikapi.com
 // @connect      shikimori.one
@@ -31,25 +31,27 @@
     alloha: false,
     kodik: false
   };
+  // Объект для хранения настроек
+  const playerSettings = {
+    rememberQuality: localStorage.getItem('shiki-remember-quality') === 'true',
+    defaultQuality: localStorage.getItem('shiki-default-quality') || 'auto'
+  };
 
   // Функция для определения текущего сезона
   function getCurrentSeason() {
     const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
     return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
   }
-
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
-
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
-
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
       isInserting ||
@@ -72,7 +74,6 @@
       isInserting = false;
     });
   }
-
   function showNotification(message, type = "info") {
     if (!document.getElementById('shikip-notif-style-modern')) {
       const style = document.createElement('style');
@@ -192,7 +193,6 @@
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
-
   function playerSelectorHTML(current) {
     let optionsHTML = '';
     if (playerAvailability.turbo) {
@@ -218,7 +218,6 @@
       </div>
     `;
   }
-
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -297,7 +296,6 @@
     `;
     document.head.appendChild(style);
   }
-
   async function checkPlayerAvailability(id) {
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
@@ -337,7 +335,6 @@
       }
     }
   }
-
   function toggleTheaterMode(playerContainer) {
     isTheaterMode = !isTheaterMode;
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
@@ -373,7 +370,6 @@
       exitTheaterMode(playerContainer);
     }
   }
-
   function exitTheaterMode(playerContainer) {
     isTheaterMode = false;
     document.body.classList.remove('shiki-theater-mode');
@@ -410,7 +406,6 @@
       setTimeout(() => overlay.remove(), 300);
     }
   }
-
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -800,6 +795,27 @@
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
         }
+        .settings-btn {
+          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=9n2IYYUFvTa4&format=png&color=000000') no-repeat center;
+          background-size: 70%;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          margin-left: 10px;
+          position: relative;
+        }
+        .settings-btn:hover {
+          background-color: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
+          border-color: rgba(105, 97, 255, 0.5);
+          transform: translateY(-2px);
+        }
         .tooltip {
           position: fixed;
           background: rgba(0, 0, 0, 0.8);
@@ -818,13 +834,145 @@
           opacity: 1;
           transform: translateX(-50%) translateY(5px);
         }
+        .settings-modal {
+          display: none;
+          position: fixed;
+          z-index: 10000;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(5px);
+          animation: fadeIn 0.3s ease;
+        }
+        .settings-modal-content {
+          background-color: rgba(255, 255, 255, 0.95);
+          margin: 5% auto;
+          padding: 25px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          width: 90%;
+          max-width: 600px;
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          animation: slideIn 0.4s ease;
+        }
+        @keyframes slideIn {
+          from { transform: translateY(-50px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .settings-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .settings-header h2 {
+          margin: 0;
+          color: #333;
+          font-size: 24px;
+        }
+        .close-settings {
+          color: #666;
+          font-size: 28px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .close-settings:hover {
+          color: #333;
+          transform: rotate(90deg);
+        }
+        .settings-section {
+          margin-bottom: 25px;
+        }
+        .settings-section h3 {
+          margin-top: 0;
+          margin-bottom: 15px;
+          color: #444;
+          font-size: 18px;
+        }
+        .settings-option {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 0;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .settings-option:last-child {
+          border-bottom: none;
+        }
+        .settings-option label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          color: #333;
+        }
+        .settings-option input[type="checkbox"] {
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+        }
+        .settings-option select {
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.8);
+          color: #333;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .settings-info {
+          background: rgba(105, 97, 255, 0.1);
+          border-left: 4px solid #6961ff;
+          padding: 15px;
+          border-radius: 0 8px 8px 0;
+          margin-top: 20px;
+          font-size: 14px;
+          color: #555;
+        }
+        .settings-save-btn {
+          background: #6961ff;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s;
+          margin-top: 15px;
+          width: 100%;
+        }
+        .settings-save-btn:hover {
+          background: #5a52e0;
+          transform: translateY(-2px);
+        }
         @media (max-width: 600px) {
-          .theater-mode-btn-small, .add-to-list-btn {
+          .theater-mode-btn-small, .add-to-list-btn, .settings-btn {
             width: 40px;
             height: 40px;
           }
-          .add-to-list-btn {
+          .add-to-list-btn, .settings-btn {
             background-size: 65%;
+          }
+          .settings-modal-content {
+            width: 95%;
+            margin: 10% auto;
+            padding: 20px;
+          }
+          .settings-header h2 {
+            font-size: 20px;
+          }
+          .settings-option {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .settings-option select {
+            width: 100%;
           }
         }
       `;
@@ -879,16 +1027,15 @@
       `;
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
-      
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-      
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
-      
+      const settingsBtn = document.createElement('button');
+      settingsBtn.className = 'settings-btn';
       theaterBtnContainer.appendChild(theaterBtn);
       theaterBtnContainer.appendChild(addToListBtn);
-      
+      theaterBtnContainer.appendChild(settingsBtn);
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -903,6 +1050,8 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.32</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
+            <li><strong>v1.31</strong> - Добавлена кнопка настроек плеера с возможностью сохранения предпочтений</li>
             <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с режимом кинотеатра и добавление серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
             <li><strong>v1.29.6</strong> - Исправлена работа с сезонами в Alloha</li>
             <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
@@ -937,20 +1086,17 @@
       }
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
-        
         // Создаем всплывающую подсказку для кнопки театрального режима
         const theaterTooltip = document.createElement('div');
         theaterTooltip.className = 'tooltip';
         theaterTooltip.textContent = 'Театральный режим';
         document.body.appendChild(theaterTooltip);
-        
         theaterBtn.addEventListener('mouseenter', () => {
           const rect = theaterBtn.getBoundingClientRect();
           theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
           theaterTooltip.style.top = `${rect.bottom + 5}px`;
           theaterTooltip.classList.add('show');
         });
-        
         theaterBtn.addEventListener('mouseleave', () => {
           theaterTooltip.classList.remove('show');
         });
@@ -960,27 +1106,116 @@
           const incrementButton = document.querySelector('.item-add.increment');
           if (incrementButton) {
             incrementButton.click();
-            showNotification('Добавлено в список', 'success');
+            showNotification('Добавлена серия в просмотрено', 'success');
           } else {
-            showNotification('Не найдена кнопка добавления в список', 'warning');
+            showNotification('Не найдена кнопка добавления серии в просмотрено', 'warning');
           }
         });
-        
         // Создаем всплывающую подсказку для кнопки добавления в список
         const addToListTooltip = document.createElement('div');
         addToListTooltip.className = 'tooltip';
-        addToListTooltip.textContent = 'Добавить в список';
+        addToListTooltip.textContent = 'Добавить серию в просмотрено';
         document.body.appendChild(addToListTooltip);
-        
         addToListBtn.addEventListener('mouseenter', () => {
           const rect = addToListBtn.getBoundingClientRect();
           addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
           addToListTooltip.style.top = `${rect.bottom + 5}px`;
           addToListTooltip.classList.add('show');
         });
-        
         addToListBtn.addEventListener('mouseleave', () => {
           addToListTooltip.classList.remove('show');
+        });
+      }
+      if (settingsBtn) {
+        // Создаем модальное окно настроек
+        let settingsModal = document.getElementById('player-settings-modal');
+        if (!settingsModal) {
+          settingsModal = document.createElement('div');
+          settingsModal.id = 'player-settings-modal';
+          settingsModal.className = 'settings-modal';
+          settingsModal.innerHTML = `
+            <div class="settings-modal-content">
+              <div class="settings-header">
+                <h2>Настройки плеера</h2>
+                <span class="close-settings">&times;</span>
+              </div>
+
+              <div class="settings-section">
+                <h3>Воспроизведение</h3>
+                <div class="settings-option">
+                  <label>
+                    <input type="checkbox" id="remember-quality" ${playerSettings.rememberQuality ? 'checked' : ''}>
+                    Запоминать качество видео
+                  </label>
+                </div>
+                <div class="settings-option">
+                  <label>
+                    Качество по умолчанию:
+                    <select id="default-quality">
+                      <option value="auto" ${playerSettings.defaultQuality === 'auto' ? 'selected' : ''}>Авто</option>
+                      <option value="1080" ${playerSettings.defaultQuality === '1080' ? 'selected' : ''}>1080p</option>
+                      <option value="720" ${playerSettings.defaultQuality === '720' ? 'selected' : ''}>720p</option>
+                      <option value="480" ${playerSettings.defaultQuality === '480' ? 'selected' : ''}>480p</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-info">
+                <p>Примечание: Некоторые настройки могут не поддерживаться всеми плеерами.</p>
+              </div>
+
+              <button class="settings-save-btn">Сохранить настройки</button>
+            </div>
+          `;
+          document.body.appendChild(settingsModal);
+
+          // Обработчики событий
+          const closeBtn = settingsModal.querySelector('.close-settings');
+          closeBtn.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+          });
+
+          window.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+              settingsModal.style.display = 'none';
+            }
+          });
+
+          const saveBtn = settingsModal.querySelector('.settings-save-btn');
+          saveBtn.addEventListener('click', () => {
+            // Сохранение настроек
+            playerSettings.rememberQuality = document.getElementById('remember-quality').checked;
+            playerSettings.defaultQuality = document.getElementById('default-quality').value;
+
+            // Сохранение в localStorage
+            localStorage.setItem('shiki-remember-quality', playerSettings.rememberQuality);
+            localStorage.setItem('shiki-default-quality', playerSettings.defaultQuality);
+
+            showNotification('Настройки сохранены', 'success');
+            settingsModal.style.display = 'none';
+          });
+        }
+
+        settingsBtn.addEventListener('click', () => {
+          settingsModal.style.display = 'block';
+        });
+
+        // Создаем всплывающую подсказку для кнопки настроек
+        const settingsTooltip = document.createElement('div');
+        settingsTooltip.className = 'tooltip';
+        settingsTooltip.textContent = 'Настройки плеера';
+        document.body.appendChild(settingsTooltip);
+
+        settingsBtn.addEventListener('mouseenter', () => {
+          const rect = settingsBtn.getBoundingClientRect();
+          settingsTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          settingsTooltip.style.top = `${rect.bottom + 5}px`;
+          settingsTooltip.classList.add('show');
+        });
+
+        settingsBtn.addEventListener('mouseleave', () => {
+          settingsTooltip.classList.remove('show');
         });
       }
       setupLazyLoading(playerContainer, () =>
@@ -999,7 +1234,6 @@
       `;
     });
   }
-
   async function autoPlayerChain(id, playerContainer, episode) {
     const playerOrder = ['turbo', 'lumex', 'alloha', 'kodik'].filter(p => playerAvailability[p]);
     if (playerOrder.length === 0) {
@@ -1023,7 +1257,6 @@
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
   }
-
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     if (!playerAvailability[playerType]) {
       showNotification(`Плеер ${playerType} недоступен`, "error");
@@ -1032,7 +1265,6 @@
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
-
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `
@@ -1114,7 +1346,6 @@
       throw error;
     }
   }
-
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -1128,7 +1359,6 @@
       });
     });
   }
-
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -1137,11 +1367,9 @@
     }
     return null;
   }
-
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
-
   async function loadAllohaPlayer(id, episode) {
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
@@ -1203,7 +1431,6 @@
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
-
   async function loadTurboPlayer(id, episode) {
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
@@ -1266,7 +1493,6 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
-
   async function loadLumexPlayer(id, episode) {
     const cacheKey = `lumex_${id}_${episode}`;
     let iframeUrl = getCachedData(cacheKey);
@@ -1333,7 +1559,6 @@
       throw new Error("Ошибка загрузки Lumex: " + error.message);
     }
   }
-
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -1341,7 +1566,6 @@
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
-
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1354,7 +1578,6 @@
     );
     observer.observe(container);
   }
-
   function setupDOMObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(() => {
@@ -1365,7 +1588,6 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
-
   function watchURLChanges() {
     let lastPath = location.pathname;
     const checkUrlChange = () => {
@@ -1396,17 +1618,14 @@
       }
     });
   }
-
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
-
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
-
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
