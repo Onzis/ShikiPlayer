@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.29.7
+// @version      1.30
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -24,7 +24,6 @@
   let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
-
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -93,7 +92,7 @@
         }
         .shikip-notif-modern {
           background: rgba(255, 255, 255, 0.85);
-          color: #333;
+          color: #ffffff;
           padding: 18px 32px;
           border-radius: 16px;
           font-size: 1.08rem;
@@ -116,10 +115,10 @@
           opacity: 1;
           transform: translateY(0);
         }
-        .shikip-notif-modern.success { border-color: rgba(67, 233, 123, 0.3); background: rgba(67, 233, 123, 0.1); }
-        .shikip-notif-modern.error   { border-color: rgba(231, 56, 39, 0.3); background: rgba(231, 56, 39, 0.1); }
-        .shikip-notif-modern.info    { border-color: rgba(57, 106, 252, 0.3); background: rgba(57, 106, 252, 0.1); }
-        .shikip-notif-modern.warning { border-color: rgba(255, 210, 0, 0.3); background: rgba(255, 210, 0, 0.1); }
+        .shikip-notif-modern.success { border-color: rgb(0 255 86 / 40%); background: rgb(0 0 0 / 40%); }
+        .shikip-notif-modern.error   { border-color: rgb(255 23 0 / 40%); background: rgb(0 0 0 / 40%); }
+        .shikip-notif-modern.info    { border-color: rgb(0 64 255 / 40%); background: rgb(0 0 0 / 40%); }
+        .shikip-notif-modern.warning { border-color: rgb(255 210 0 / 40%); background: rgb(0 0 0 / 40%); }
         .shikip-notif-modern .notif-icon {
           font-size: 1.5rem;
           flex-shrink: 0;
@@ -304,7 +303,6 @@
     playerAvailability.lumex = false;
     playerAvailability.alloha = false;
     playerAvailability.kodik = false;
-
     try {
       const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
       const kodikData = JSON.parse(kodikResponse);
@@ -314,28 +312,24 @@
     } catch (e) {
       console.warn("Kodik недоступен:", e);
     }
-
     try {
       await loadTurboPlayer(id, 1);
       playerAvailability.turbo = true;
     } catch (e) {
       console.warn("Turbo недоступен:", e);
     }
-
     try {
       await loadLumexPlayer(id, 1);
       playerAvailability.lumex = true;
     } catch (e) {
       console.warn("Lumex недоступен:", e);
     }
-
     try {
       await loadAllohaPlayer(id, 1);
       playerAvailability.alloha = true;
     } catch (e) {
       console.warn("Alloha недоступен:", e);
     }
-
     if (!playerAvailability[currentPlayer]) {
       const availablePlayers = Object.keys(playerAvailability).filter(p => playerAvailability[p]);
       if (availablePlayers.length > 0) {
@@ -748,7 +742,6 @@
       `;
       document.head.appendChild(style);
     }
-
     if (!document.getElementById('shikip-theater-btn-style')) {
       const style = document.createElement('style');
       style.id = 'shikip-theater-btn-style';
@@ -773,6 +766,7 @@
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
+          position: relative;
         }
         .theater-mode-btn-small:hover {
           background-color: rgba(255, 255, 255, 0.9);
@@ -785,21 +779,61 @@
           border-color: rgba(105, 97, 255, 0.5);
           filter: brightness(0) invert(1);
         }
+        .add-to-list-btn {
+          background: rgba(255, 255, 255, 0.7) url('https://img.icons8.com/?size=100&id=UBMhbvNpcoAM&format=png&color=000000') no-repeat center;
+          background-size: 70%;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          margin-left: 10px;
+          position: relative;
+        }
+        .add-to-list-btn:hover {
+          background-color: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
+          border-color: rgba(105, 97, 255, 0.5);
+          transform: translateY(-2px);
+        }
+        .tooltip {
+          position: fixed;
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          white-space: nowrap;
+          z-index: 10000;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s, transform 0.3s;
+          transform: translateX(-50%) translateY(-10px);
+        }
+        .tooltip.show {
+          opacity: 1;
+          transform: translateX(-50%) translateY(5px);
+        }
         @media (max-width: 600px) {
-          .theater-mode-btn-small {
+          .theater-mode-btn-small, .add-to-list-btn {
             width: 40px;
             height: 40px;
+          }
+          .add-to-list-btn {
+            background-size: 65%;
           }
         }
       `;
       document.head.appendChild(style);
     }
-
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     const id = getShikimoriID();
     if (!id) return;
-
     playerContainer.innerHTML = `
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
@@ -812,11 +846,8 @@
         </div>
       </div>
     `;
-
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
-
     const checkPromise = checkPlayerAvailability(id);
-
     checkPromise.then(() => {
       if (!Object.values(playerAvailability).some(Boolean)) {
         playerContainer.innerHTML = `
@@ -830,7 +861,6 @@
         `;
         return;
       }
-
       const headerElement = document.createElement("div");
       headerElement.className = "kodik-header";
       headerElement.innerHTML = `
@@ -839,7 +869,6 @@
           ${playerSelectorHTML(currentPlayer)}
         </div>
       `;
-
       const playerWrapper = document.createElement("div");
       playerWrapper.className = "player-wrapper";
       playerWrapper.innerHTML = `
@@ -848,13 +877,18 @@
           <div>Загрузка...</div>
         </div>
       `;
-
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
+      
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
+      
+      const addToListBtn = document.createElement('button');
+      addToListBtn.className = 'add-to-list-btn';
+      
       theaterBtnContainer.appendChild(theaterBtn);
-
+      theaterBtnContainer.appendChild(addToListBtn);
+      
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -869,6 +903,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с режимом кинотеатра и добавление серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
             <li><strong>v1.29.6</strong> - Исправлена работа с сезонами в Alloha</li>
             <li><strong>v1.29.0</strong> - Обновлен интерфейс контейнера</li>
             <li><strong>v1.27.0</strong> - Добавлена поддержка Lumex плеера</li>
@@ -881,22 +916,17 @@
           </ul>
         </div>
       `;
-
       playerContainer.innerHTML = '';
       playerContainer.appendChild(headerElement);
       playerContainer.appendChild(playerWrapper);
       playerContainer.appendChild(theaterBtnContainer);
       playerContainer.appendChild(changelogBlock);
-
       const header = changelogBlock.querySelector('.changelog-header');
       header.addEventListener('click', () => {
         changelogBlock.classList.toggle('expanded');
       });
-
       if (observer) observer.disconnect();
-
       const startEpisode = 1;
-
       const playerDropdown = playerContainer.querySelector("#player-dropdown");
       if (playerDropdown) {
         playerDropdown.addEventListener("change", (e) => {
@@ -905,11 +935,54 @@
           }
         });
       }
-
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
+        
+        // Создаем всплывающую подсказку для кнопки театрального режима
+        const theaterTooltip = document.createElement('div');
+        theaterTooltip.className = 'tooltip';
+        theaterTooltip.textContent = 'Театральный режим';
+        document.body.appendChild(theaterTooltip);
+        
+        theaterBtn.addEventListener('mouseenter', () => {
+          const rect = theaterBtn.getBoundingClientRect();
+          theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          theaterTooltip.style.top = `${rect.bottom + 5}px`;
+          theaterTooltip.classList.add('show');
+        });
+        
+        theaterBtn.addEventListener('mouseleave', () => {
+          theaterTooltip.classList.remove('show');
+        });
       }
-
+      if (addToListBtn) {
+        addToListBtn.addEventListener('click', () => {
+          const incrementButton = document.querySelector('.item-add.increment');
+          if (incrementButton) {
+            incrementButton.click();
+            showNotification('Добавлено в список', 'success');
+          } else {
+            showNotification('Не найдена кнопка добавления в список', 'warning');
+          }
+        });
+        
+        // Создаем всплывающую подсказку для кнопки добавления в список
+        const addToListTooltip = document.createElement('div');
+        addToListTooltip.className = 'tooltip';
+        addToListTooltip.textContent = 'Добавить в список';
+        document.body.appendChild(addToListTooltip);
+        
+        addToListBtn.addEventListener('mouseenter', () => {
+          const rect = addToListBtn.getBoundingClientRect();
+          addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          addToListTooltip.style.top = `${rect.bottom + 5}px`;
+          addToListTooltip.classList.add('show');
+        });
+        
+        addToListBtn.addEventListener('mouseleave', () => {
+          addToListTooltip.classList.remove('show');
+        });
+      }
       setupLazyLoading(playerContainer, () =>
         autoPlayerChain(id, playerContainer, startEpisode)
       );
@@ -933,7 +1006,6 @@
       showNotification("Нет доступных плееров для этого аниме", "error");
       return;
     }
-
     let lastError = null;
     for (const playerType of playerOrder) {
       try {
@@ -947,7 +1019,6 @@
         showNotification(`${playerType} недоступен, пробую следующий...`, "warning");
       }
     }
-
     if (lastError) {
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
@@ -964,26 +1035,22 @@
 
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
-
     playerWrapper.innerHTML = `
       <div class="loader">
         <div class="loader-spinner"></div>
         <div>Загрузка плеера...</div>
       </div>
     `;
-
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         showNotification("Ваш браузер не поддерживает необходимые кодеки для Alloha плеера.", "error");
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
       }
-
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
-
       if (playerType === "turbo") {
         try {
           const iframeUrl = await loadTurboPlayer(id, episode);
@@ -999,13 +1066,11 @@
           const iframeUrl = await loadAllohaPlayer(id, episode);
           iframe.src = iframeUrl;
           iframe.onerror = () => { throw new Error("Alloha 404"); };
-
           // Добавляем обработчик для проверки ошибки "сезон недоступен"
           iframe.addEventListener("load", function() {
             try {
               const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
               const errorElements = iframeContent.querySelectorAll('.error, .warning, .not-found');
-
               for (const el of errorElements) {
                 if (el.textContent.includes("сезон недоступен") ||
                     el.textContent.includes("сезон не найден") ||
@@ -1034,10 +1099,8 @@
         showNotification("Неизвестный тип плеера.", "error");
         throw new Error("Неизвестный тип плеера");
       }
-
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
-
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
@@ -1083,11 +1146,9 @@
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
     let iframeUrl = getCachedData(cacheKey);
-
     if (iframeUrl) {
       return `${iframeUrl}&episode=${episode}&season=${season}`;
     }
-
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1100,29 +1161,24 @@
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
-
     const results = kodikData.results;
     if (!results?.length) {
       showNotification("Нет результатов от Kodik API для Alloha.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-
     const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
-
     if (!allohaUrl) {
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
       throw new Error("Kinopoisk ID или IMDB ID не найдены");
     }
-
     async function tryFetchAlloha(retries = 3, delayMs = 1000) {
       for (let i = 0; i < retries; i++) {
         try {
           const allohaResponse = await gmGetWithTimeout(allohaUrl);
           const allohaData = JSON.parse(allohaResponse);
-
           if (allohaData.status === "success" && allohaData.data?.iframe) {
             return allohaData.data.iframe;
           } else {
@@ -1137,7 +1193,6 @@
         }
       }
     }
-
     try {
       const allohaIframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, allohaIframeUrl);
@@ -1153,7 +1208,6 @@
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
     if (iframeUrl) { return iframeUrl; }
-
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1166,21 +1220,17 @@
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
-
     const results = kodikData.results;
     if (!results?.length) {
       showNotification("Нет результатов от Kodik API для Turbo.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-
     const { kinopoisk_id } = results[0];
     if (!kinopoisk_id) {
       showNotification("Kinopoisk ID не найден для Turbo.", "error");
       throw new Error("Kinopoisk ID не найден");
     }
-
     const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
-
     async function tryFetchKinobox(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -1206,7 +1256,6 @@
         }
       }
     }
-
     try {
       const iframeUrl = await tryFetchKinobox();
       setCachedData(cacheKey, iframeUrl);
@@ -1222,7 +1271,6 @@
     const cacheKey = `lumex_${id}_${episode}`;
     let iframeUrl = getCachedData(cacheKey);
     if (iframeUrl) { return iframeUrl; }
-
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1235,21 +1283,17 @@
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
-
     const results = kodikData.results;
     if (!results?.length) {
       showNotification("Нет результатов от Kodik API для Lumex.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-
     const { kinopoisk_id } = results[0];
     if (!kinopoisk_id) {
       showNotification("Kinopoisk ID не найден для Lumex.", "error");
       throw new Error("Kinopoisk ID не найден");
     }
-
     const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
-
     async function tryFetchKinoboxLumex(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -1279,7 +1323,6 @@
         }
       }
     }
-
     try {
       const iframeUrl = await tryFetchKinoboxLumex();
       setCachedData(cacheKey, iframeUrl);
@@ -1344,7 +1387,6 @@
       checkUrlChange();
     };
     window.addEventListener("popstate", checkUrlChange);
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && isTheaterMode) {
         const playerContainer = document.querySelector(".kodik-container");
