@@ -879,16 +879,16 @@
       `;
       const theaterBtnContainer = document.createElement('div');
       theaterBtnContainer.className = 'theater-mode-btn-container';
-      
+
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-mode-btn-small';
-      
+
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
-      
+
       theaterBtnContainer.appendChild(theaterBtn);
       theaterBtnContainer.appendChild(addToListBtn);
-      
+
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -937,20 +937,20 @@
       }
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
-        
+
         // Создаем всплывающую подсказку для кнопки театрального режима
         const theaterTooltip = document.createElement('div');
         theaterTooltip.className = 'tooltip';
         theaterTooltip.textContent = 'Театральный режим';
         document.body.appendChild(theaterTooltip);
-        
+
         theaterBtn.addEventListener('mouseenter', () => {
           const rect = theaterBtn.getBoundingClientRect();
           theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
           theaterTooltip.style.top = `${rect.bottom + 5}px`;
           theaterTooltip.classList.add('show');
         });
-        
+
         theaterBtn.addEventListener('mouseleave', () => {
           theaterTooltip.classList.remove('show');
         });
@@ -965,20 +965,20 @@
             showNotification('Не найдена кнопка добавления в список', 'warning');
           }
         });
-        
+
         // Создаем всплывающую подсказку для кнопки добавления в список
         const addToListTooltip = document.createElement('div');
         addToListTooltip.className = 'tooltip';
-        addToListTooltip.textContent = 'Добавить в список';
+        addToListTooltip.textContent = 'Добавить серию в просмотрено';
         document.body.appendChild(addToListTooltip);
-        
+
         addToListBtn.addEventListener('mouseenter', () => {
           const rect = addToListBtn.getBoundingClientRect();
           addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
           addToListTooltip.style.top = `${rect.bottom + 5}px`;
           addToListTooltip.classList.add('show');
         });
-        
+
         addToListBtn.addEventListener('mouseleave', () => {
           addToListTooltip.classList.remove('show');
         });
