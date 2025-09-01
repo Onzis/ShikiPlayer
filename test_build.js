@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.30.2
+// @version      1.35
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -680,15 +680,15 @@
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.95);
+          background: rgba(0, 0, 0, 0.7);
           z-index: 9999;
           display: flex;
           justify-content: center;
           align-items: center;
           padding: 20px;
           box-sizing: border-box;
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(5px);
+          -webkit-backdrop-filter: blur(5px);
         }
         .shiki-theater-player {
           width: 80%;
@@ -1142,6 +1142,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.35</strong> - Исправлен театральный режим: добавлено затемнение фона с видимостью страницы</li>
             <li><strong>v1.34</strong> - Исправлен порядок блоков в настройках | Добавлена прокрутка для настроек</li>
             <li><strong>v1.33</strong> - Добавлены настройки: плеер по умолчанию, порядок плееров, отключение уведомлений</li>
             <li><strong>v1.32</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
