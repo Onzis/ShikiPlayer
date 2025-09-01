@@ -960,9 +960,9 @@
           const incrementButton = document.querySelector('.item-add.increment');
           if (incrementButton) {
             incrementButton.click();
-            showNotification('Добавлено в список', 'success');
+            showNotification('Добавлена серия в просмотрено', 'success');
           } else {
-            showNotification('Не найдена кнопка добавления в список', 'warning');
+            showNotification('Не найдена кнопка добавления серии в просмотрено', 'warning');
           }
         });
 
