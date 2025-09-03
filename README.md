@@ -35,7 +35,10 @@ ShikiPlayer — это пользовательский скрипт, котор
 - Уведомления появляются внизу экрана и автоматически исчезают через несколько секунд, либо их можно закрыть вручную.
 
 ## Скриншот
-![ShikiPlayer в действии](https://github.com/Onzis/ShikiPlayer/blob/main/public/player.png?raw=true)
+<img width="918" height="704" alt="image" src="https://github.com/user-attachments/assets/2b07aa28-6792-4a03-a8e1-6a57c86801f4" />
+<img width="1177" height="848" alt="image" src="https://github.com/user-attachments/assets/6760805c-1f74-4b64-af7f-61ca004bfef3" />
+
+
 
 ## Поддерживаемые плееры
 1. **Turbo**: Быстрый и легкий, используется по умолчанию.
