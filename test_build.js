@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.43
+// @version      1.44
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -634,14 +634,10 @@
           border: 4px solid rgba(255, 255, 255, 0.3);
           border-radius: 50%;
           border-top-color: #6961ff;
-          animation: spin 1s ease-in-out infinite, pulse 2s ease-in-out infinite;
+          animation: spin 1s linear infinite;
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
         }
         .error-message {
           position: absolute;
@@ -856,7 +852,7 @@
           color: #fff;
         }
         .kodik-container.dark-theme .loader-spinner {
-          border: 4px solid rgba(255, 255, 255, 0.1);
+          border: 4px solid rgba(255, 255, 255, 0.2);
           border-top-color: #6961ff;
         }
         .kodik-container.dark-theme .shikip-changelog {
@@ -1456,6 +1452,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
             <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
             <li><strong>v1.42</strong> - Исправлена прокрутка страницы в настройках плеера</li>
             <li><strong>v1.41</strong> - Исправлено отображение порядка плееров в выпадающем списке</li>
@@ -1903,7 +1900,7 @@
     playerWrapper.innerHTML = `
       <div class="loader">
         <div class="loader-spinner"></div>
-        <div>Загрузка плеера...</div>
+        <div>Загрузка...</div>
       </div>
     `;
     
