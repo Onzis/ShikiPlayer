@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.42
+// @version      1.43
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -866,6 +866,9 @@
         .kodik-container.dark-theme .changelog-header {
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .kodik-container.dark-theme .changelog-header:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
         .kodik-container.dark-theme .changelog-header span {
           color: #fff;
         }
@@ -907,6 +910,9 @@
         }
         .kodik-container.light-theme .changelog-header {
           border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .kodik-container.light-theme .changelog-header:hover {
+          background: rgba(255, 255, 255, 0.5);
         }
         .kodik-container.light-theme .changelog-header span {
           color: #333;
@@ -1450,6 +1456,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
             <li><strong>v1.42</strong> - Исправлена прокрутка страницы в настройках плеера</li>
             <li><strong>v1.41</strong> - Исправлено отображение порядка плееров в выпадающем списке</li>
             <li><strong>v1.40</strong> - Исправлена работа порядка плееров в настройках</li>
