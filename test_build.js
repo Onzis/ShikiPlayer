@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.38
+// @version      1.40
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -15,6 +15,7 @@
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
+
 (function () {
   "use strict";
   let currentPath = location.pathname;
@@ -24,6 +25,7 @@
   let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
+  
   // Объект для хранения настроек
   const playerSettings = {
     rememberQuality: localStorage.getItem('shiki-remember-quality') === 'true',
@@ -31,8 +33,10 @@
     defaultPlayer: localStorage.getItem('shiki-default-player') || 'turbo',
     playerOrder: JSON.parse(localStorage.getItem('shiki-player-order')) || ['turbo', 'lumex', 'alloha', 'kodik'],
     disableNotifications: localStorage.getItem('shiki-disable-notifications') === 'true',
-    theme: localStorage.getItem('shiki-theme') || 'dark'
+    theme: localStorage.getItem('shiki-theme') || 'dark',
+    debugMode: localStorage.getItem('shiki-debug-mode') === 'true' // Новая опция для отладки
   };
+  
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -40,21 +44,32 @@
     alloha: false,
     kodik: false
   };
+
+  // Функция для отладки
+  function debugLog(message, data = null) {
+    if (playerSettings.debugMode) {
+      console.log(`[ShikiPlayer Debug] ${message}`, data || '');
+    }
+  }
+
   // Функция для определения текущего сезона
   function getCurrentSeason() {
     const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
     return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
   }
+
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
+
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
+
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
       isInserting ||
@@ -77,6 +92,7 @@
       isInserting = false;
     });
   }
+
   function showNotification(message, type = "info") {
     if (playerSettings.disableNotifications) return;
     if (!document.getElementById('shikip-notif-style-modern')) {
@@ -197,6 +213,7 @@
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
+
   function playerSelectorHTML(current) {
     let optionsHTML = '';
     if (playerAvailability.turbo) {
@@ -222,6 +239,7 @@
       </div>
     `;
   }
+
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -300,45 +318,73 @@
     `;
     document.head.appendChild(style);
   }
+
   async function checkPlayerAvailability(id) {
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
     playerAvailability.alloha = false;
     playerAvailability.kodik = false;
+    
+    debugLog(`Проверка доступности плееров для аниме ID: ${id}`);
+    
     try {
       const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
       const kodikData = JSON.parse(kodikResponse);
+      debugLog(`Ответ Kodik API:`, kodikData);
+      
       if (kodikData.results && kodikData.results.length > 0) {
         playerAvailability.kodik = true;
+        debugLog("Kodik доступен");
       }
     } catch (e) {
       console.warn("Kodik недоступен:", e);
+      debugLog("Ошибка при проверке Kodik:", e);
     }
+    
     try {
-      await loadTurboPlayer(id, 1);
-      playerAvailability.turbo = true;
+      const turboUrl = await loadTurboPlayer(id, 1);
+      if (turboUrl) {
+        playerAvailability.turbo = true;
+        debugLog("Turbo доступен");
+      }
     } catch (e) {
       console.warn("Turbo недоступен:", e);
+      debugLog("Ошибка при проверке Turbo:", e);
     }
+    
     try {
-      await loadLumexPlayer(id, 1);
-      playerAvailability.lumex = true;
+      const lumexUrl = await loadLumexPlayer(id, 1);
+      if (lumexUrl) {
+        playerAvailability.lumex = true;
+        debugLog("Lumex доступен");
+      }
     } catch (e) {
       console.warn("Lumex недоступен:", e);
+      debugLog("Ошибка при проверке Lumex:", e);
     }
+    
     try {
-      await loadAllohaPlayer(id, 1);
-      playerAvailability.alloha = true;
+      const allohaUrl = await loadAllohaPlayer(id, 1);
+      if (allohaUrl) {
+        playerAvailability.alloha = true;
+        debugLog("Alloha доступен");
+      }
     } catch (e) {
       console.warn("Alloha недоступен:", e);
+      debugLog("Ошибка при проверке Alloha:", e);
     }
+    
     if (!playerAvailability[currentPlayer]) {
       const availablePlayers = Object.keys(playerAvailability).filter(p => playerAvailability[p]);
       if (availablePlayers.length > 0) {
         currentPlayer = availablePlayers[0];
+        debugLog(`Текущий плеер недоступен, переключаемся на: ${currentPlayer}`);
       }
     }
+    
+    debugLog("Итоговая доступность плееров:", playerAvailability);
   }
+
   function toggleTheaterMode(playerContainer) {
     isTheaterMode = !isTheaterMode;
     const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
@@ -374,6 +420,7 @@
       exitTheaterMode(playerContainer);
     }
   }
+
   function exitTheaterMode(playerContainer) {
     isTheaterMode = false;
     document.body.classList.remove('shiki-theater-mode');
@@ -410,6 +457,7 @@
       setTimeout(() => overlay.remove(), 300);
     }
   }
+
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -824,6 +872,7 @@
       `;
       document.head.appendChild(style);
     }
+
     if (!document.getElementById('shikip-theater-btn-style')) {
       const style = document.createElement('style');
       style.id = 'shikip-theater-btn-style';
@@ -1235,6 +1284,7 @@
       `;
       document.head.appendChild(style);
     }
+
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     // Применяем сохраненную тему
@@ -1318,6 +1368,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.39</strong> - Исправлена работа плееров Turbo и Lumex, добавлена отладка</li>
             <li><strong>v1.38</strong> - Исправлены иконки кнопок и тема настроек</li>
             <li><strong>v1.37</strong> - Исправлено переключение тем плеера</li>
             <li><strong>v1.36</strong> - Добавлена возможность выбора темы плеера (светлая/темная)</li>
@@ -1490,6 +1541,15 @@
                     </label>
                   </div>
                 </div>
+                <div class="settings-section">
+                  <h3>Диагностика</h3>
+                  <div class="settings-option">
+                    <label>
+                      <input type="checkbox" id="debug-mode" ${playerSettings.debugMode ? 'checked' : ''}>
+                      Режим отладки (вывод в консоль)
+                    </label>
+                  </div>
+                </div>
                 <div class="settings-info">
                   <p>Примечание: Некоторые настройки могут не поддерживаться всеми плеерами.</p>
                 </div>
@@ -1558,14 +1618,18 @@
             playerSettings.defaultQuality = document.getElementById('default-quality').value;
             playerSettings.defaultPlayer = document.getElementById('default-player').value;
             playerSettings.disableNotifications = document.getElementById('disable-notifications').checked;
+            playerSettings.debugMode = document.getElementById('debug-mode').checked;
+            
             // Сохранение темы
             const selectedTheme = settingsModal.querySelector('.theme-option.selected');
             if (selectedTheme) {
               playerSettings.theme = selectedTheme.dataset.theme;
             }
+            
             // Сохранение порядка плееров
             const playerOrderItems = document.querySelectorAll('.player-order-item');
             playerSettings.playerOrder = Array.from(playerOrderItems).map(item => item.dataset.player);
+            
             // Сохранение в localStorage
             localStorage.setItem('shiki-remember-quality', playerSettings.rememberQuality);
             localStorage.setItem('shiki-default-quality', playerSettings.defaultQuality);
@@ -1573,10 +1637,14 @@
             localStorage.setItem('shiki-player-order', JSON.stringify(playerSettings.playerOrder));
             localStorage.setItem('shiki-disable-notifications', playerSettings.disableNotifications);
             localStorage.setItem('shiki-theme', playerSettings.theme);
+            localStorage.setItem('shiki-debug-mode', playerSettings.debugMode);
+            
             // Применение темы
             applyTheme(playerContainer, playerSettings.theme);
+            
             // Применение темы к модальному окну
             applyModalTheme(settingsModal, playerSettings.theme);
+            
             showNotification('Настройки сохранены', 'success');
             settingsModal.style.display = 'none';
           });
@@ -1617,6 +1685,7 @@
       `;
     });
   }
+
   // Функция для применения темы к плееру
   function applyTheme(playerContainer, theme) {
     // Удаляем оба класса темы
@@ -1629,6 +1698,7 @@
       playerContainer.classList.add('dark-theme');
     }
   }
+
   // Функция для применения темы к модальному окну настроек
   function applyModalTheme(settingsModal, theme) {
     // Удаляем оба класса темы
@@ -1641,6 +1711,7 @@
       settingsModal.classList.add('dark-theme');
     }
   }
+
   async function autoPlayerChain(id, playerContainer, episode) {
     // Используем порядок из настроек, но фильтруем только доступные плееры
     const playerOrder = playerSettings.playerOrder.filter(p => playerAvailability[p]);
@@ -1648,14 +1719,17 @@
       showNotification("Нет доступных плееров для этого аниме", "error");
       return;
     }
+    
     // Если есть плеер по умолчанию и он доступен, начинаем с него
     let startIndex = 0;
     if (playerAvailability[playerSettings.defaultPlayer]) {
       startIndex = playerOrder.indexOf(playerSettings.defaultPlayer);
       if (startIndex === -1) startIndex = 0;
     }
+    
     // Создаем новый порядок, начиная с плеера по умолчанию
     const orderedPlayers = [...playerOrder.slice(startIndex), ...playerOrder.slice(0, startIndex)];
+    
     let lastError = null;
     for (const playerType of orderedPlayers) {
       try {
@@ -1669,10 +1743,12 @@
         showNotification(`${playerType} недоступен, пробую следующий...`, "warning");
       }
     }
+    
     if (lastError) {
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
   }
+
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     if (!playerAvailability[playerType]) {
       showNotification(`Плеер ${playerType} недоступен`, "error");
@@ -1681,6 +1757,7 @@
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
+
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `
@@ -1689,16 +1766,19 @@
         <div>Загрузка плеера...</div>
       </div>
     `;
+    
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         showNotification("Ваш браузер не поддерживает необходимые кодеки для Alloha плеера.", "error");
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
       }
+      
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
+      
       if (playerType === "turbo") {
         try {
           const iframeUrl = await loadTurboPlayer(id, episode);
@@ -1747,8 +1827,10 @@
         showNotification("Неизвестный тип плеера.", "error");
         throw new Error("Неизвестный тип плеера");
       }
+      
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
+      
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
@@ -1762,6 +1844,7 @@
       throw error;
     }
   }
+
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -1775,6 +1858,7 @@
       });
     });
   }
+
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -1783,9 +1867,11 @@
     }
     return null;
   }
+
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
+
   async function loadAllohaPlayer(id, episode) {
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
@@ -1793,6 +1879,7 @@
     if (iframeUrl) {
       return `${iframeUrl}&episode=${episode}&season=${season}`;
     }
+    
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1801,34 +1888,44 @@
         kodikData = JSON.parse(kodikResponse);
         setCachedData(kodikCacheKey, kodikData);
       } catch (error) {
+        debugLog("Ошибка загрузки данных Kodik API для Alloha:", error);
         showNotification("Ошибка загрузки данных Kodik API для Alloha.", "error");
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
+    
     const results = kodikData.results;
     if (!results?.length) {
+      debugLog("Нет результатов от Kodik API для Alloha");
       showNotification("Нет результатов от Kodik API для Alloha.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
+    
     const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+      
     if (!allohaUrl) {
+      debugLog("Kinopoisk ID или IMDB ID не найдены для Alloha");
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
       throw new Error("Kinopoisk ID или IMDB ID не найдены");
     }
+    
     async function tryFetchAlloha(retries = 3, delayMs = 1000) {
       for (let i = 0; i < retries; i++) {
         try {
           const allohaResponse = await gmGetWithTimeout(allohaUrl);
           const allohaData = JSON.parse(allohaResponse);
+          debugLog("Ответ Alloha API:", allohaData);
+          
           if (allohaData.status === "success" && allohaData.data?.iframe) {
             return allohaData.data.iframe;
           } else {
             throw new Error("Ошибка Alloha API: " + (allohaData.error_info || "Неизвестная ошибка"));
           }
         } catch (error) {
+          debugLog(`Попытка ${i+1} загрузки Alloha не удалась:`, error);
           if (i === retries - 1) {
             showNotification("Alloha API недоступен. Попробуйте позже.", "error");
             throw error;
@@ -1837,20 +1934,29 @@
         }
       }
     }
+    
     try {
       const allohaIframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, allohaIframeUrl);
       return `${allohaIframeUrl}&episode=${episode}&season=${season}`;
     } catch (error) {
       localStorage.removeItem(cacheKey);
+      debugLog("Ошибка загрузки Alloha:", error);
       showNotification("Ошибка загрузки Alloha: " + error.message, "error");
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
+
   async function loadTurboPlayer(id, episode) {
+    debugLog(`Загрузка Turbo плеера для аниме ID: ${id}, серия: ${episode}`);
+    
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) { return iframeUrl; }
+    if (iframeUrl) { 
+      debugLog("Используем кешированный URL для Turbo");
+      return iframeUrl; 
+    }
+    
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1858,22 +1964,42 @@
         const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
         kodikData = JSON.parse(kodikResponse);
         setCachedData(kodikCacheKey, kodikData);
+        debugLog("Получены данные от Kodik API для Turbo");
       } catch (error) {
+        debugLog("Ошибка загрузки данных Kodik API для Turbo:", error);
         showNotification("Ошибка загрузки данных Kodik API для Turbo.", "error");
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
+    
     const results = kodikData.results;
     if (!results?.length) {
+      debugLog("Нет результатов от Kodik API для Turbo");
       showNotification("Нет результатов от Kodik API для Turbo.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-    const { kinopoisk_id } = results[0];
-    if (!kinopoisk_id) {
-      showNotification("Kinopoisk ID не найден для Turbo.", "error");
-      throw new Error("Kinopoisk ID не найден");
+    
+    const { kinopoisk_id, worldart_id, shikimori_id } = results[0];
+    debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
+    
+    // Пробуем разные варианты получения данных
+    let kinoboxUrl = null;
+    if (kinopoisk_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+    } else if (worldart_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
+    } else if (shikimori_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
     }
-    const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+    
+    if (!kinoboxUrl) {
+      debugLog("Не найден подходящий ID для запроса к Kinobox API");
+      showNotification("Не найден подходящий ID для Turbo.", "error");
+      throw new Error("Не найден подходящий ID");
+    }
+    
+    debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
+    
     async function tryFetchKinobox(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -1884,14 +2010,32 @@
               "Sec-Fetch-Site": "same-origin",
             },
           });
+          
           const kinoboxData = JSON.parse(kinoboxResponse);
-          const turboPlayer = kinoboxData.data?.find((player) => player.type === "Turbo");
+          debugLog("Ответ Kinobox API:", kinoboxData);
+          
+          // Проверяем наличие данных и ищем Turbo плеер
+          if (!kinoboxData.data || !Array.isArray(kinoboxData.data)) {
+            throw new Error("Некорректный формат ответа от Kinobox API");
+          }
+          
+          // Ищем плеер с типом "Turbo" или похожим названием
+          const turboPlayer = kinoboxData.data.find((player) => 
+            player.type && player.type.toLowerCase().includes("turbo")
+          );
+          
           if (turboPlayer?.iframeUrl) {
             return turboPlayer.iframeUrl;
           } else {
+            // Если Turbo не найден, пробуем использовать первый доступный плеер
+            if (kinoboxData.data.length > 0 && kinoboxData.data[0].iframeUrl) {
+              debugLog("Turbo плеер не найден, используем первый доступный:", kinoboxData.data[0].type);
+              return kinoboxData.data[0].iframeUrl;
+            }
             throw new Error("Turbo плеер не найден в Kinobox API");
           }
         } catch (error) {
+          debugLog(`Попытка ${i+1} загрузки Kinobox не удалась:`, error);
           if (i === retries - 1) {
             showNotification("Kinobox API недоступен для Turbo. Попробуйте позже.", "error");
             throw error;
@@ -1899,20 +2043,30 @@
         }
       }
     }
+    
     try {
       const iframeUrl = await tryFetchKinobox();
       setCachedData(cacheKey, iframeUrl);
+      debugLog("Turbo плеер успешно загружен");
       return iframeUrl;
     } catch (error) {
       localStorage.removeItem(cacheKey);
+      debugLog("Ошибка загрузки Turbo:", error);
       showNotification("Ошибка загрузки Turbo: " + error.message, "error");
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
+
   async function loadLumexPlayer(id, episode) {
+    debugLog(`Загрузка Lumex плеера для аниме ID: ${id}, серия: ${episode}`);
+    
     const cacheKey = `lumex_${id}_${episode}`;
     let iframeUrl = getCachedData(cacheKey);
-    if (iframeUrl) { return iframeUrl; }
+    if (iframeUrl) { 
+      debugLog("Используем кешированный URL для Lumex");
+      return iframeUrl; 
+    }
+    
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -1920,22 +2074,42 @@
         const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
         kodikData = JSON.parse(kodikResponse);
         setCachedData(kodikCacheKey, kodikData);
+        debugLog("Получены данные от Kodik API для Lumex");
       } catch (error) {
+        debugLog("Ошибка загрузки данных Kodik API для Lumex:", error);
         showNotification("Ошибка загрузки данных Kodik API для Lumex.", "error");
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
+    
     const results = kodikData.results;
     if (!results?.length) {
+      debugLog("Нет результатов от Kodik API для Lumex");
       showNotification("Нет результатов от Kodik API для Lumex.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
-    const { kinopoisk_id } = results[0];
-    if (!kinopoisk_id) {
-      showNotification("Kinopoisk ID не найден для Lumex.", "error");
-      throw new Error("Kinopoisk ID не найден");
+    
+    const { kinopoisk_id, worldart_id, shikimori_id } = results[0];
+    debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
+    
+    // Пробуем разные варианты получения данных
+    let kinoboxUrl = null;
+    if (kinopoisk_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+    } else if (worldart_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
+    } else if (shikimori_id) {
+      kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
     }
-    const kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+    
+    if (!kinoboxUrl) {
+      debugLog("Не найден подходящий ID для запроса к Kinobox API");
+      showNotification("Не найден подходящий ID для Lumex.", "error");
+      throw new Error("Не найден подходящий ID");
+    }
+    
+    debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
+    
     async function tryFetchKinoboxLumex(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
@@ -1946,8 +2120,20 @@
               "Sec-Fetch-Site": "same-origin",
             },
           });
+          
           const kinoboxData = JSON.parse(kinoboxResponse);
-          const lumexPlayer = kinoboxData.data?.find((player) => player.type === "Lumex");
+          debugLog("Ответ Kinobox API для Lumex:", kinoboxData);
+          
+          // Проверяем наличие данных и ищем Lumex плеер
+          if (!kinoboxData.data || !Array.isArray(kinoboxData.data)) {
+            throw new Error("Некорректный формат ответа от Kinobox API");
+          }
+          
+          // Ищем плеер с типом "Lumex" или похожим названием
+          const lumexPlayer = kinoboxData.data.find((player) => 
+            player.type && player.type.toLowerCase().includes("lumex")
+          );
+          
           if (lumexPlayer?.iframeUrl) {
             let url = lumexPlayer.iframeUrl;
             if (episode) {
@@ -1955,9 +2141,19 @@
             }
             return url;
           } else {
+            // Если Lumex не найден, пробуем использовать первый доступный плеер
+            if (kinoboxData.data.length > 0 && kinoboxData.data[0].iframeUrl) {
+              debugLog("Lumex плеер не найден, используем первый доступный:", kinoboxData.data[0].type);
+              let url = kinoboxData.data[0].iframeUrl;
+              if (episode) {
+                url += (url.includes("?") ? "&" : "?") + "episode=" + episode;
+              }
+              return url;
+            }
             throw new Error("Lumex плеер не найден в Kinobox API");
           }
         } catch (error) {
+          debugLog(`Попытка ${i+1} загрузки Kinobox для Lumex не удалась:`, error);
           if (i === retries - 1) {
             showNotification("Kinobox API недоступен для Lumex. Попробуйте позже.", "error");
             throw error;
@@ -1965,16 +2161,20 @@
         }
       }
     }
+    
     try {
       const iframeUrl = await tryFetchKinoboxLumex();
       setCachedData(cacheKey, iframeUrl);
+      debugLog("Lumex плеер успешно загружен");
       return iframeUrl;
     } catch (error) {
       localStorage.removeItem(cacheKey);
+      debugLog("Ошибка загрузки Lumex:", error);
       showNotification("Ошибка загрузки Lumex: " + error.message, "error");
       throw new Error("Ошибка загрузки Lumex: " + error.message);
     }
   }
+
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -1982,6 +2182,7 @@
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
+
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1994,6 +2195,7 @@
     );
     observer.observe(container);
   }
+
   function setupDOMObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(() => {
@@ -2004,6 +2206,7 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
+
   function watchURLChanges() {
     let lastPath = location.pathname;
     const checkUrlChange = () => {
@@ -2034,14 +2237,17 @@
       }
     });
   }
+
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
+
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
+
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
