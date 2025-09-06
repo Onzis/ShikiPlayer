@@ -1150,6 +1150,10 @@
           background: rgba(105, 97, 255, 0.8);
           transform: scale(1.1);
         }
+        /* Класс для запрета скролла страницы в режиме кинотеатра */
+        .theater-mode-active {
+          overflow: hidden !important;
+        }
         @media (max-width: 600px) {
           .add-to-list-btn, .settings-btn, .theater-btn {
             width: 40px;
@@ -1560,6 +1564,9 @@
           playerContainer.classList.toggle('theater-mode');
           
           if (playerContainer.classList.contains('theater-mode')) {
+            // Запрещаем скролл страницы
+            document.body.classList.add('theater-mode-active');
+            
             // Создаем кнопку закрытия режима кинотеатра
             const closeTheaterBtn = document.createElement('button');
             closeTheaterBtn.className = 'close-theater-btn';
@@ -1567,6 +1574,8 @@
             closeTheaterBtn.addEventListener('click', () => {
               playerContainer.classList.remove('theater-mode');
               closeTheaterBtn.remove();
+              // Разрешаем скролл страницы
+              document.body.classList.remove('theater-mode-active');
             });
             document.body.appendChild(closeTheaterBtn);
             
@@ -1575,16 +1584,20 @@
               if (e.key === 'Escape' && playerContainer.classList.contains('theater-mode')) {
                 playerContainer.classList.remove('theater-mode');
                 closeTheaterBtn.remove();
+                // Разрешаем скролл страницы
+                document.body.classList.remove('theater-mode-active');
                 document.removeEventListener('keydown', handleEscape);
               }
             };
             document.addEventListener('keydown', handleEscape);
             
-            showNotification('Режим кинотеатра включен. Нажмите Escape для выхода', 'info');
+            // Убираем уведомление о входе в режим кинотеатра
           } else {
             // Удаляем кнопку закрытия, если она существует
             const closeBtn = document.querySelector('.close-theater-btn');
             if (closeBtn) closeBtn.remove();
+            // Разрешаем скролл страницы
+            document.body.classList.remove('theater-mode-active');
           }
         });
         
