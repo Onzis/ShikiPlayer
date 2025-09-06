@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.44
+// @version      1.45
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -15,13 +15,13 @@
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
+
 (function () {
   "use strict";
   let currentPath = location.pathname;
   let observer = null;
   let currentPlayer = "turbo";
   let isInserting = false;
-  let isTheaterMode = false;
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
   
@@ -35,7 +35,6 @@
     theme: localStorage.getItem('shiki-theme') || 'dark',
     debugMode: localStorage.getItem('shiki-debug-mode') === 'true'
   };
-
   // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
@@ -43,32 +42,27 @@
     alloha: false,
     kodik: false
   };
-
   // Функция для отладки
   function debugLog(message, data = null) {
     if (playerSettings.debugMode) {
       console.log(`[ShikiPlayer Debug] ${message}`, data || '');
     }
   }
-
   // Функция для определения текущего сезона
   function getCurrentSeason() {
     const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
     return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
   }
-
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
-
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
-
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
       isInserting ||
@@ -77,7 +71,6 @@
     ) {
       return;
     }
-
     const relatedBlock =
       document.querySelector(".cc-related-authors") || document.querySelector(".sidebar");
     if (!relatedBlock) {
@@ -86,14 +79,12 @@
       }
       return;
     }
-
     isInserting = true;
     removeOldElements();
     createAndInsertPlayer(relatedBlock).finally(() => {
       isInserting = false;
     });
   }
-
   function showNotification(message, type = "info") {
     if (playerSettings.disableNotifications) return;
     
@@ -180,7 +171,6 @@
       `;
       document.head.appendChild(style);
     }
-
     let notifContainer = document.getElementById('shikip-notif-modern-container');
     if (!notifContainer) {
       notifContainer = document.createElement('div');
@@ -188,18 +178,15 @@
       notifContainer.className = 'shikip-notif-modern-container';
       document.body.appendChild(notifContainer);
     }
-
     while (notifContainer.firstChild) {
       notifContainer.removeChild(notifContainer.firstChild);
     }
-
     const icons = {
       success: "✅",
       error: "⛔",
       info: "ℹ️",
       warning: "⚠️"
     };
-
     const notifType = ['success','error','info','warning'].includes(type) ? type : 'info';
     const notif = document.createElement("div");
     notif.className = `shikip-notif-modern ${notifType}`;
@@ -208,21 +195,17 @@
       <span>${message}</span>
       <button class="notif-close" title="Закрыть">&times;</button>
     `;
-
     notifContainer.appendChild(notif);
     setTimeout(() => {
       notif.classList.add('show');
     }, 10);
-
     const hide = () => {
       notif.classList.remove('show');
       setTimeout(() => notif.remove(), 500);
     };
-
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
-
   // ИСПРАВЛЕНА ФУНКЦИЯ: Теперь использует порядок из настроек
   function playerSelectorHTML(current) {
     let optionsHTML = '';
@@ -245,7 +228,6 @@
       </div>
     `;
   }
-
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -281,36 +263,6 @@
         opacity: 0.6;
         cursor: not-allowed;
       }
-      .theater-mode-btn {
-        background: rgba(255, 255, 255, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        color: #333;
-        border-radius: 8px;
-        padding: 8px 12px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        opacity: 0;
-        transform: translateY(10px);
-        animation: fadeInUp 0.6s ease forwards 0.4s;
-      }
-      .theater-mode-btn:hover {
-        background: rgba(255, 255, 255, 0.9);
-        box-shadow: 0 4px 16px rgba(105, 97, 255, 0.2);
-        border-color: rgba(105, 97, 255, 0.5);
-        transform: translateY(-2px);
-      }
-      .theater-mode-btn.active {
-        background: rgba(105, 97, 255, 0.2);
-        border-color: rgba(105, 97, 255, 0.5);
-        color: #6961ff;
-      }
       @keyframes fadeInUp {
         from {
           opacity: 0;
@@ -324,14 +276,12 @@
     `;
     document.head.appendChild(style);
   }
-
   async function checkPlayerAvailability(id) {
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
     playerAvailability.alloha = false;
     playerAvailability.kodik = false;
     debugLog(`Проверка доступности плееров для аниме ID: ${id}`);
-
     try {
       const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
       const kodikData = JSON.parse(kodikResponse);
@@ -344,7 +294,6 @@
       console.warn("Kodik недоступен:", e);
       debugLog("Ошибка при проверке Kodik:", e);
     }
-
     try {
       const turboUrl = await loadTurboPlayer(id, 1);
       if (turboUrl) {
@@ -355,7 +304,6 @@
       console.warn("Turbo недоступен:", e);
       debugLog("Ошибка при проверке Turbo:", e);
     }
-
     try {
       const lumexUrl = await loadLumexPlayer(id, 1);
       if (lumexUrl) {
@@ -366,7 +314,6 @@
       console.warn("Lumex недоступен:", e);
       debugLog("Ошибка при проверке Lumex:", e);
     }
-
     try {
       const allohaUrl = await loadAllohaPlayer(id, 1);
       if (allohaUrl) {
@@ -377,7 +324,6 @@
       console.warn("Alloha недоступен:", e);
       debugLog("Ошибка при проверке Alloha:", e);
     }
-
     // ИСПРАВЛЕНО: Теперь выбираем первый доступный плеер в порядке настроек
     if (!playerAvailability[currentPlayer]) {
       debugLog(`Текущий плеер ${currentPlayer} недоступен, ищем замену в порядке настроек`);
@@ -389,96 +335,9 @@
         }
       }
     }
-
     debugLog("Итоговая доступность плееров:", playerAvailability);
     debugLog("Текущий плеер после проверки:", currentPlayer);
   }
-
-  function toggleTheaterMode(playerContainer) {
-    isTheaterMode = !isTheaterMode;
-    const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
-    
-    if (isTheaterMode) {
-      document.body.classList.add('shiki-theater-mode');
-      theaterBtn.classList.add('active');
-      
-      const overlay = document.createElement('div');
-      overlay.className = 'shiki-theater-overlay';
-      overlay.style.opacity = '0';
-      document.body.appendChild(overlay);
-      
-      setTimeout(() => {
-        overlay.style.transition = 'opacity 0.5s ease';
-        overlay.style.opacity = '1';
-      }, 10);
-      
-      overlay.onclick = () => toggleTheaterMode(playerContainer);
-      
-      const playerWrapper = playerContainer.querySelector('.player-wrapper');
-      const iframe = playerWrapper.querySelector('iframe');
-      if (iframe) {
-        const theaterPlayer = document.createElement('div');
-        theaterPlayer.className = 'shiki-theater-player';
-        theaterPlayer.style.transform = 'scale(0.9)';
-        theaterPlayer.style.opacity = '0';
-        theaterPlayer.appendChild(iframe.cloneNode(true));
-        overlay.appendChild(theaterPlayer);
-        
-        setTimeout(() => {
-          theaterPlayer.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-          theaterPlayer.style.transform = 'scale(1)';
-          theaterPlayer.style.opacity = '1';
-        }, 100);
-        
-        playerWrapper.style.display = 'none';
-      }
-    } else {
-      exitTheaterMode(playerContainer);
-    }
-  }
-
-  function exitTheaterMode(playerContainer) {
-    isTheaterMode = false;
-    document.body.classList.remove('shiki-theater-mode');
-    const theaterBtn = playerContainer.querySelector('.theater-mode-btn-small');
-    if (theaterBtn) {
-      theaterBtn.classList.remove('active');
-    }
-    
-    const overlay = document.querySelector('.shiki-theater-overlay');
-    if (overlay) {
-      const theaterPlayer = overlay.querySelector('.shiki-theater-player');
-      const playerWrapper = playerContainer.querySelector('.player-wrapper');
-      
-      if (theaterPlayer && playerWrapper) {
-        const iframe = theaterPlayer.querySelector('iframe');
-        if (iframe) {
-          theaterPlayer.style.transition = 'all 0.3s ease';
-          theaterPlayer.style.transform = 'scale(0.9)';
-          theaterPlayer.style.opacity = '0';
-          
-          setTimeout(() => {
-            playerWrapper.innerHTML = '';
-            playerWrapper.appendChild(iframe);
-            playerWrapper.style.display = '';
-            playerWrapper.style.opacity = '0';
-            playerWrapper.style.transform = 'scale(0.95)';
-            
-            setTimeout(() => {
-              playerWrapper.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-              playerWrapper.style.opacity = '1';
-              playerWrapper.style.transform = 'scale(1)';
-            }, 10);
-          }, 300);
-        }
-      }
-      
-      overlay.style.transition = 'opacity 0.3s ease';
-      overlay.style.opacity = '0';
-      setTimeout(() => overlay.remove(), 300);
-    }
-  }
-
   // Функция для настройки drag and drop
   function setupDragAndDrop(container) {
     let draggedItem = null;
@@ -506,7 +365,6 @@
       }
     });
   }
-
   function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.player-order-item:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
@@ -519,7 +377,6 @@
       }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
-
   // Функция для обновления порядка плееров в модальном окне
   function updatePlayerOrderInModal(settingsModal) {
     const playerOrderContainer = settingsModal.querySelector('#player-order-container');
@@ -535,7 +392,6 @@
       setupDragAndDrop(playerOrderContainer);
     }
   }
-
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -767,75 +623,6 @@
             transform: translateX(0);
           }
         }
-        .shiki-theater-mode {
-          overflow: hidden !important;
-        }
-        .shiki-theater-mode .l-page,
-        .shiki-theater-mode .l-footer,
-        .shiki-theater-mode .l-menu {
-          filter: blur(5px);
-          opacity: 0.3;
-          pointer-events: none;
-          transition: all 0.3s ease;
-        }
-        .shiki-theater-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.7);
-          z-index: 9999;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 20px;
-          box-sizing: border-box;
-          backdrop-filter: blur(5px);
-          -webkit-backdrop-filter: blur(5px);
-        }
-        .shiki-theater-player {
-          width: 80%;
-          aspect-ratio: 16/9;
-          position: relative;
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        }
-        .shiki-theater-player iframe {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border: none;
-        }
-        .shiki-theater-close {
-          position: absolute;
-          top: 20px;
-          right: 20px;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          color: #333;
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          font-size: 24px;
-          cursor: pointer;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 10000;
-          transition: all 0.2s;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        }
-        .shiki-theater-close:hover {
-          background: rgba(255, 255, 255, 1);
-          transform: scale(1.05) rotate(90deg);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
         /* Темная тема (по умолчанию) */
         .kodik-container.dark-theme {
           background: rgba(30, 30, 40, 0.9);
@@ -932,17 +719,9 @@
           .shikip-changelog.expanded .changelog-content {
             padding: 12px;
           }
-          .shiki-theater-player {
-            max-width: 100%;
-            border-radius: 0;
-          }
           .kodik-header {
             padding: 10px 12px;
             font-size: 13px;
-          }
-          .theater-mode-btn {
-            padding: 6px 10px;
-            font-size: 12px;
           }
           #player-dropdown {
             padding: 6px 12px;
@@ -952,12 +731,11 @@
       `;
       document.head.appendChild(style);
     }
-
     if (!document.getElementById('shikip-theater-btn-style')) {
       const style = document.createElement('style');
       style.id = 'shikip-theater-btn-style';
       style.textContent = `
-        .theater-mode-btn-container {
+        .player-buttons-container {
           display: flex;
           justify-content: center;
           margin: 12px 0;
@@ -965,9 +743,9 @@
           transform: translateY(10px);
           animation: fadeInUp 0.6s ease forwards 0.7s;
         }
-        .theater-mode-btn-small,
         .add-to-list-btn,
-        .settings-btn {
+        .settings-btn,
+        .theater-btn {
           background: rgba(255, 255, 255, 0.7);
           border: 1px solid rgba(255, 255, 255, 0.5);
           border-radius: 8px;
@@ -984,28 +762,30 @@
           align-items: center;
           color: #000;
         }
-        .theater-mode-btn-small svg,
         .add-to-list-btn svg,
-        .settings-btn svg {
+        .settings-btn svg,
+        .theater-btn svg {
           width: 24px;
           height: 24px;
           pointer-events: none;
         }
-        .theater-mode-btn-small:hover,
         .add-to-list-btn:hover,
-        .settings-btn:hover {
+        .settings-btn:hover,
+        .theater-btn:hover {
           background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
         }
-        .theater-mode-btn-small.active {
-          background-color: rgba(105, 97, 255, 0.2);
-          border-color: rgba(105, 97, 255, 0.5);
+        /* Изменяем порядок отступов для кнопок */
+        .theater-btn {
+          /* Первая кнопка, без левого отступа */
         }
-        .add-to-list-btn,
+        .add-to-list-btn {
+          margin-left: 10px; /* Вторая кнопка, с левым отступом */
+        }
         .settings-btn {
-          margin-left: 10px;
+          margin-left: 10px; /* Третья кнопка, с левым отступом */
         }
         .tooltip {
           position: fixed;
@@ -1294,49 +1074,94 @@
           background: rgba(105, 97, 255, 0.6);
         }
         /* Темная тема для кнопок */
-        .kodik-container.dark-theme .theater-mode-btn-small,
         .kodik-container.dark-theme .add-to-list-btn,
-        .kodik-container.dark-theme .settings-btn {
+        .kodik-container.dark-theme .settings-btn,
+        .kodik-container.dark-theme .theater-btn {
           background: rgba(40, 40, 50, 0.8);
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: #fff;
         }
-        .kodik-container.dark-theme .theater-mode-btn-small:hover,
         .kodik-container.dark-theme .add-to-list-btn:hover,
-        .kodik-container.dark-theme .settings-btn:hover {
+        .kodik-container.dark-theme .settings-btn:hover,
+        .kodik-container.dark-theme .theater-btn:hover {
           background: rgba(50, 50, 60, 0.9);
           border-color: #6961ff;
         }
-        .kodik-container.dark-theme .theater-mode-btn-small.active {
-          background: rgba(105, 97, 255, 0.3);
-          border-color: #6961ff;
-        }
         /* Светлая тема для кнопок */
-        .kodik-container.light-theme .theater-mode-btn-small,
         .kodik-container.light-theme .add-to-list-btn,
-        .kodik-container.light-theme .settings-btn {
+        .kodik-container.light-theme .settings-btn,
+        .kodik-container.light-theme .theater-btn {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(0, 0, 0, 0.1);
           color: #000;
         }
-        .kodik-container.light-theme .theater-mode-btn-small:hover,
         .kodik-container.light-theme .add-to-list-btn:hover,
-        .kodik-container.light-theme .settings-btn:hover {
+        .kodik-container.light-theme .settings-btn:hover,
+        .kodik-container.light-theme .theater-btn:hover {
           background: #fff;
           border-color: #6961ff;
         }
-        .kodik-container.light-theme .theater-mode-btn-small.active {
-          background: rgba(105, 97, 255, 0.2);
-          border-color: #6961ff;
+        /* Стили для режима кинотеатра */
+        .kodik-container.theater-mode {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          max-width: none;
+          z-index: 9999;
+          margin: 0;
+          border-radius: 0;
+          background: rgba(0, 0, 0, 0.95);
+        }
+        .kodik-container.theater-mode .kodik-header,
+        .kodik-container.theater-mode .player-buttons-container,
+        .kodik-container.theater-mode .shikip-changelog {
+          display: none;
+        }
+        .kodik-container.theater-mode .player-wrapper {
+          height: 100vh;
+          padding-bottom: 0;
+          width: 100%;
+        }
+        .kodik-container.theater-mode .player-wrapper iframe {
+          width: 100%;
+          height: 100%;
+        }
+        .close-theater-btn {
+          position: fixed;
+          top: 15px;
+          right: 15px;
+          z-index: 10000;
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          font-size: 24px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+        }
+        .close-theater-btn:hover {
+          background: rgba(105, 97, 255, 0.8);
+          transform: scale(1.1);
+        }
+        /* Класс для запрета скролла страницы в режиме кинотеатра */
+        .theater-mode-active {
+          overflow: hidden !important;
         }
         @media (max-width: 600px) {
-          .theater-mode-btn-small, .add-to-list-btn, .settings-btn {
+          .add-to-list-btn, .settings-btn, .theater-btn {
             width: 40px;
             height: 40px;
           }
-          .theater-mode-btn-small svg,
           .add-to-list-btn svg,
-          .settings-btn svg {
+          .settings-btn svg,
+          .theater-btn svg {
             width: 20px;
             height: 20px;
           }
@@ -1361,7 +1186,6 @@
       `;
       document.head.appendChild(style);
     }
-
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     // Применяем сохраненную тему
@@ -1418,14 +1242,10 @@
         </div>
       `;
       
-      const theaterBtnContainer = document.createElement('div');
-      theaterBtnContainer.className = 'theater-mode-btn-container';
+      const buttonsContainer = document.createElement('div');
+      buttonsContainer.className = 'player-buttons-container';
       
       // Создаем кнопки с SVG иконками
-      const theaterBtn = document.createElement('button');
-      theaterBtn.className = 'theater-mode-btn-small';
-      theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
-      
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
       addToListBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
@@ -1434,9 +1254,15 @@
       settingsBtn.className = 'settings-btn';
       settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
       
-      theaterBtnContainer.appendChild(theaterBtn);
-      theaterBtnContainer.appendChild(addToListBtn);
-      theaterBtnContainer.appendChild(settingsBtn);
+      // Создаем кнопку кинотеатра
+      const theaterBtn = document.createElement('button');
+      theaterBtn.className = 'theater-btn';
+      theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+      
+      // Изменяем порядок добавления кнопок - кнопка кинотеатра теперь первая
+      buttonsContainer.appendChild(theaterBtn);
+      buttonsContainer.appendChild(addToListBtn);
+      buttonsContainer.appendChild(settingsBtn);
       
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
@@ -1461,12 +1287,11 @@
             <li><strong>v1.38</strong> - Исправлены иконки кнопок и тема настроек</li>
             <li><strong>v1.37</strong> - Исправлено переключение тем плеера</li>
             <li><strong>v1.36</strong> - Добавлена возможность выбора темы плеера (светлая/темная)</li>
-            <li><strong>v1.35</strong> - Исправлен театральный режим: добавлено затемнение фона с видимостью страницы</li>
             <li><strong>v1.34</strong> - Исправлен порядок блоков в настройках | Добавлена прокрутка для настроек</li>
             <li><strong>v1.33</strong> - Добавлены настройки: плеер по умолчанию, порядок плееров, отключение уведомлений</li>
             <li><strong>v1.32</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
             <li><strong>v1.31</strong> - Добавлена кнопка настроек плеера с возможностью сохранения предпочтений</li>
-            <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с режимом кинотеатра и добавление серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
+            <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с добавлением серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
           </ul>
         </div>
       `;
@@ -1474,7 +1299,7 @@
       playerContainer.innerHTML = '';
       playerContainer.appendChild(headerElement);
       playerContainer.appendChild(playerWrapper);
-      playerContainer.appendChild(theaterBtnContainer);
+      playerContainer.appendChild(buttonsContainer);
       playerContainer.appendChild(changelogBlock);
       
       const header = changelogBlock.querySelector('.changelog-header');
@@ -1491,27 +1316,6 @@
           if (e.target.value) {
             manualSwitchPlayer(e.target.value, id, playerContainer, startEpisode);
           }
-        });
-      }
-      
-      if (theaterBtn) {
-        theaterBtn.addEventListener('click', () => toggleTheaterMode(playerContainer));
-        
-        // Создаем всплывающую подсказку для кнопки театрального режима
-        const theaterTooltip = document.createElement('div');
-        theaterTooltip.className = 'tooltip';
-        theaterTooltip.textContent = 'Театральный режим';
-        document.body.appendChild(theaterTooltip);
-        
-        theaterBtn.addEventListener('mouseenter', () => {
-          const rect = theaterBtn.getBoundingClientRect();
-          theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
-          theaterTooltip.style.top = `${rect.bottom + 5}px`;
-          theaterTooltip.classList.add('show');
-        });
-        
-        theaterBtn.addEventListener('mouseleave', () => {
-          theaterTooltip.classList.remove('show');
         });
       }
       
@@ -1671,19 +1475,11 @@
           const closeBtn = settingsModal.querySelector('.close-settings');
           closeBtn.addEventListener('click', () => {
             settingsModal.style.display = 'none';
-            // Убираем блокировку прокрутки, если не активен театральный режим
-            if (!isTheaterMode) {
-              document.body.classList.remove('shiki-theater-mode');
-            }
           });
           
           window.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
               settingsModal.style.display = 'none';
-              // Убираем блокировку прокрутки, если не активен театральный режим
-              if (!isTheaterMode) {
-                document.body.classList.remove('shiki-theater-mode');
-              }
             }
           });
           
@@ -1726,20 +1522,12 @@
             
             showNotification('Настройки сохранены', 'success');
             settingsModal.style.display = 'none';
-            // Убираем блокировку прокрутки, если не активен театральный режим
-            if (!isTheaterMode) {
-              document.body.classList.remove('shiki-theater-mode');
-            }
           });
           
           // Добавляем обработчик клавиши Escape для закрытия модального окна
           document.addEventListener('keydown', function handleEscKey(e) {
             if (e.key === 'Escape' && settingsModal.style.display === 'block') {
               settingsModal.style.display = 'none';
-              // Убираем блокировку прокрутки, если не активен театральный режим
-              if (!isTheaterMode) {
-                document.body.classList.remove('shiki-theater-mode');
-              }
             }
           });
         }
@@ -1750,11 +1538,6 @@
           // Обновляем тему модального окна перед открытием
           applyModalTheme(settingsModal, playerSettings.theme);
           settingsModal.style.display = 'block';
-          
-          // Блокируем прокрутку страницы, если не активен театральный режим
-          if (!isTheaterMode) {
-            document.body.classList.add('shiki-theater-mode');
-          }
         });
         
         // Создаем всплывающую подсказку для кнопки настроек
@@ -1775,6 +1558,67 @@
         });
       }
       
+      // Добавляем обработчик для кнопки кинотеатра
+      if (theaterBtn) {
+        theaterBtn.addEventListener('click', () => {
+          playerContainer.classList.toggle('theater-mode');
+          
+          if (playerContainer.classList.contains('theater-mode')) {
+            // Запрещаем скролл страницы
+            document.body.classList.add('theater-mode-active');
+            
+            // Создаем кнопку закрытия режима кинотеатра
+            const closeTheaterBtn = document.createElement('button');
+            closeTheaterBtn.className = 'close-theater-btn';
+            closeTheaterBtn.innerHTML = '&times;';
+            closeTheaterBtn.addEventListener('click', () => {
+              playerContainer.classList.remove('theater-mode');
+              closeTheaterBtn.remove();
+              // Разрешаем скролл страницы
+              document.body.classList.remove('theater-mode-active');
+            });
+            document.body.appendChild(closeTheaterBtn);
+            
+            // Добавляем обработчик клавиши Escape для выхода из режима
+            const handleEscape = (e) => {
+              if (e.key === 'Escape' && playerContainer.classList.contains('theater-mode')) {
+                playerContainer.classList.remove('theater-mode');
+                closeTheaterBtn.remove();
+                // Разрешаем скролл страницы
+                document.body.classList.remove('theater-mode-active');
+                document.removeEventListener('keydown', handleEscape);
+              }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+            // Убираем уведомление о входе в режим кинотеатра
+          } else {
+            // Удаляем кнопку закрытия, если она существует
+            const closeBtn = document.querySelector('.close-theater-btn');
+            if (closeBtn) closeBtn.remove();
+            // Разрешаем скролл страницы
+            document.body.classList.remove('theater-mode-active');
+          }
+        });
+        
+        // Создаем всплывающую подсказку для кнопки кинотеатра
+        const theaterTooltip = document.createElement('div');
+        theaterTooltip.className = 'tooltip';
+        theaterTooltip.textContent = 'Режим кинотеатра';
+        document.body.appendChild(theaterTooltip);
+        
+        theaterBtn.addEventListener('mouseenter', () => {
+          const rect = theaterBtn.getBoundingClientRect();
+          theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
+          theaterTooltip.style.top = `${rect.bottom + 5}px`;
+          theaterTooltip.classList.add('show');
+        });
+        
+        theaterBtn.addEventListener('mouseleave', () => {
+          theaterTooltip.classList.remove('show');
+        });
+      }
+      
       setupLazyLoading(playerContainer, () =>
         autoPlayerChain(id, playerContainer, startEpisode)
       );
@@ -1791,7 +1635,6 @@
       `;
     });
   }
-
   // Функция для применения темы к плееру
   function applyTheme(playerContainer, theme) {
     // Удаляем оба класса темы
@@ -1804,7 +1647,6 @@
       playerContainer.classList.add('dark-theme');
     }
   }
-
   // Функция для применения темы к модальному окну настроек
   function applyModalTheme(settingsModal, theme) {
     // Удаляем оба класса темы
@@ -1817,7 +1659,6 @@
       settingsModal.classList.add('dark-theme');
     }
   }
-
   // НОВАЯ ФУНКЦИЯ: Обновление выпадающего списка плееров
   function updatePlayerDropdown(playerContainer, current) {
     const playerDropdown = playerContainer.querySelector("#player-dropdown");
@@ -1844,7 +1685,6 @@
       }
     }
   }
-
   async function autoPlayerChain(id, playerContainer, episode) {
     // Используем порядок из настроек, но фильтруем только доступные плееры
     const playerOrder = playerSettings.playerOrder.filter(p => playerAvailability[p]);
@@ -1884,7 +1724,6 @@
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
   }
-
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     if (!playerAvailability[playerType]) {
       showNotification(`Плеер ${playerType} недоступен`, "error");
@@ -1894,7 +1733,6 @@
     currentPlayer = playerType;
     await showPlayer(playerType, id, playerContainer, episode);
   }
-
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `
@@ -1981,7 +1819,6 @@
       throw error;
     }
   }
-
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -1995,7 +1832,6 @@
       });
     });
   }
-
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -2004,11 +1840,9 @@
     }
     return null;
   }
-
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
-
   async function loadAllohaPlayer(id, episode) {
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
@@ -2083,7 +1917,6 @@
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
-
   async function loadTurboPlayer(id, episode) {
     debugLog(`Загрузка Turbo плеера для аниме ID: ${id}, серия: ${episode}`);
     const cacheKey = `turbo_${id}`;
@@ -2191,7 +2024,6 @@
       throw new Error("Ошибка загрузки Turbo: " + error.message);
     }
   }
-
   async function loadLumexPlayer(id, episode) {
     debugLog(`Загрузка Lumex плеера для аниме ID: ${id}, серия: ${episode}`);
     const cacheKey = `lumex_${id}_${episode}`;
@@ -2307,7 +2139,6 @@
       throw new Error("Ошибка загрузки Lumex: " + error.message);
     }
   }
-
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -2315,7 +2146,6 @@
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
-
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -2328,7 +2158,6 @@
     );
     observer.observe(container);
   }
-
   function setupDOMObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(() => {
@@ -2339,7 +2168,6 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
-
   function watchURLChanges() {
     let lastPath = location.pathname;
     const checkUrlChange = () => {
@@ -2365,27 +2193,15 @@
     };
     
     window.addEventListener("popstate", checkUrlChange);
-    
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isTheaterMode) {
-        const playerContainer = document.querySelector(".kodik-container");
-        if (playerContainer) {
-          exitTheaterMode(playerContainer);
-        }
-      }
-    });
   }
-
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
-
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
-
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
