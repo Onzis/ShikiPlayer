@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.46
+// @version      1.45
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -1551,6 +1551,12 @@
           settingsModal.style.display = 'block';
           // Блокируем прокрутку страницы
           document.body.classList.add('settings-modal-open');
+          
+          // Сбрасываем скролл модального окна в начало
+          const settingsBody = settingsModal.querySelector('.settings-body');
+          if (settingsBody) {
+            settingsBody.scrollTop = 0;
+          }
         });
         
         // Создаем всплывающую подсказку для кнопки настроек
