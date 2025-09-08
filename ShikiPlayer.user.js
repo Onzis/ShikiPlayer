@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.46
+// @version      1.47
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -391,6 +391,16 @@
       setupDragAndDrop(playerOrderContainer);
     }
   }
+  
+  // Добавляем функцию для получения информации о просмотренных сериях
+  function getWatchedEpisodesInfo() {
+    const rateNumberElement = document.querySelector('.rate-number');
+    if (rateNumberElement) {
+      return rateNumberElement.textContent.trim();
+    }
+    return '';
+  }
+  
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -790,15 +800,17 @@
           position: fixed;
           background: rgba(0, 0, 0, 0.8);
           color: white;
-          padding: 6px 12px;
+          padding: 10px 14px;
           border-radius: 6px;
           font-size: 14px;
-          white-space: nowrap;
+          white-space: pre-line;
           z-index: 10000;
           pointer-events: none;
           opacity: 0;
           transition: opacity 0.3s, transform 0.3s;
           transform: translateX(-50%) translateY(-10px);
+          text-align: center;
+          line-height: 1.6;
         }
         .tooltip.show {
           opacity: 1;
@@ -1255,7 +1267,7 @@
       
       const settingsBtn = document.createElement('button');
       settingsBtn.className = 'settings-btn';
-      settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
+      settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
       
       // Создаем кнопку кинотеатра
       const theaterBtn = document.createElement('button');
@@ -1329,6 +1341,14 @@
           if (incrementButton) {
             incrementButton.click();
             showNotification('Добавлена серия в просмотрено', 'success');
+            
+            // Обновляем подсказку после добавления серии
+            setTimeout(() => {
+              const watchedInfo = getWatchedEpisodesInfo();
+              if (watchedInfo) {
+                addToListTooltip.textContent = `Добавить серию в просмотрено\n${watchedInfo}`;
+              }
+            }, 500); // Небольшая задержка для обновления DOM
           } else {
             showNotification('Не найдена кнопка добавления серии в просмотрено', 'warning');
           }
@@ -1337,10 +1357,22 @@
         // Создаем всплывающую подсказку для кнопки добавления в список
         const addToListTooltip = document.createElement('div');
         addToListTooltip.className = 'tooltip';
-        addToListTooltip.textContent = 'Добавить серию в просмотрено';
+        
+        // Получаем текущую информацию о просмотренных сериях
+        const watchedInfo = getWatchedEpisodesInfo();
+        addToListTooltip.textContent = watchedInfo 
+          ? `Добавить серию в просмотрено\n${watchedInfo}` 
+          : 'Добавить серию в просмотрено';
+        
         document.body.appendChild(addToListTooltip);
         
         addToListBtn.addEventListener('mouseenter', () => {
+          // Обновляем информацию при каждом наведении на случай изменений
+          const watchedInfo = getWatchedEpisodesInfo();
+          addToListTooltip.textContent = watchedInfo 
+            ? `Добавить серию в просмотрено\n${watchedInfo}` 
+            : 'Добавить серию в просмотрено';
+          
           const rect = addToListBtn.getBoundingClientRect();
           addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
           addToListTooltip.style.top = `${rect.bottom + 5}px`;
