@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.45
+// @version      1.46
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -1153,6 +1153,10 @@
         .theater-mode-active {
           overflow: hidden !important;
         }
+        /* Класс для запрета скролла страницы при открытых настройках */
+        .settings-modal-open {
+          overflow: hidden !important;
+        }
         @media (max-width: 600px) {
           .add-to-list-btn, .settings-btn, .theater-btn {
             width: 40px;
@@ -1474,11 +1478,15 @@
           const closeBtn = settingsModal.querySelector('.close-settings');
           closeBtn.addEventListener('click', () => {
             settingsModal.style.display = 'none';
+            // Разблокируем прокрутку страницы
+            document.body.classList.remove('settings-modal-open');
           });
           
           window.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
               settingsModal.style.display = 'none';
+              // Разблокируем прокрутку страницы
+              document.body.classList.remove('settings-modal-open');
             }
           });
           
@@ -1521,12 +1529,16 @@
             
             showNotification('Настройки сохранены', 'success');
             settingsModal.style.display = 'none';
+            // Разблокируем прокрутку страницы
+            document.body.classList.remove('settings-modal-open');
           });
           
           // Добавляем обработчик клавиши Escape для закрытия модального окна
           document.addEventListener('keydown', function handleEscKey(e) {
             if (e.key === 'Escape' && settingsModal.style.display === 'block') {
               settingsModal.style.display = 'none';
+              // Разблокируем прокрутку страницы
+              document.body.classList.remove('settings-modal-open');
             }
           });
         }
@@ -1537,6 +1549,8 @@
           // Обновляем тему модального окна перед открытием
           applyModalTheme(settingsModal, playerSettings.theme);
           settingsModal.style.display = 'block';
+          // Блокируем прокрутку страницы
+          document.body.classList.add('settings-modal-open');
         });
         
         // Создаем всплывающую подсказку для кнопки настроек
