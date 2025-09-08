@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.45
+// @version      1.46
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -15,7 +15,6 @@
 // @grant        GM.xmlHttpRequest
 // @license      GPL-3.0 license
 // ==/UserScript==
-
 (function () {
   "use strict";
   let currentPath = location.pathname;
@@ -1154,6 +1153,10 @@
         .theater-mode-active {
           overflow: hidden !important;
         }
+        /* Класс для запрета скролла страницы при открытых настройках */
+        .settings-modal-open {
+          overflow: hidden !important;
+        }
         @media (max-width: 600px) {
           .add-to-list-btn, .settings-btn, .theater-btn {
             width: 40px;
@@ -1278,6 +1281,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.46</strong> - Исправлены ошибки с режимом кинотеатра и прокрутки настроек</li>
             <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
             <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
             <li><strong>v1.42</strong> - Исправлена прокрутка страницы в настройках плеера</li>
@@ -1475,11 +1479,15 @@
           const closeBtn = settingsModal.querySelector('.close-settings');
           closeBtn.addEventListener('click', () => {
             settingsModal.style.display = 'none';
+            // Разблокируем прокрутку страницы
+            document.body.classList.remove('settings-modal-open');
           });
           
           window.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
               settingsModal.style.display = 'none';
+              // Разблокируем прокрутку страницы
+              document.body.classList.remove('settings-modal-open');
             }
           });
           
@@ -1522,12 +1530,16 @@
             
             showNotification('Настройки сохранены', 'success');
             settingsModal.style.display = 'none';
+            // Разблокируем прокрутку страницы
+            document.body.classList.remove('settings-modal-open');
           });
           
           // Добавляем обработчик клавиши Escape для закрытия модального окна
           document.addEventListener('keydown', function handleEscKey(e) {
             if (e.key === 'Escape' && settingsModal.style.display === 'block') {
               settingsModal.style.display = 'none';
+              // Разблокируем прокрутку страницы
+              document.body.classList.remove('settings-modal-open');
             }
           });
         }
@@ -1538,6 +1550,14 @@
           // Обновляем тему модального окна перед открытием
           applyModalTheme(settingsModal, playerSettings.theme);
           settingsModal.style.display = 'block';
+          // Блокируем прокрутку страницы
+          document.body.classList.add('settings-modal-open');
+          
+          // Сбрасываем скролл модального окна в начало
+          const settingsBody = settingsModal.querySelector('.settings-body');
+          if (settingsBody) {
+            settingsBody.scrollTop = 0;
+          }
         });
         
         // Создаем всплывающую подсказку для кнопки настроек
@@ -1571,22 +1591,24 @@
             const closeTheaterBtn = document.createElement('button');
             closeTheaterBtn.className = 'close-theater-btn';
             closeTheaterBtn.innerHTML = '&times;';
-            closeTheaterBtn.addEventListener('click', () => {
+            
+            // Функция для выхода из режима кинотеатра
+            const exitTheaterMode = () => {
               playerContainer.classList.remove('theater-mode');
               closeTheaterBtn.remove();
               // Разрешаем скролл страницы
               document.body.classList.remove('theater-mode-active');
-            });
+              // Удаляем обработчик Escape
+              document.removeEventListener('keydown', handleEscape);
+            };
+            
+            closeTheaterBtn.addEventListener('click', exitTheaterMode);
             document.body.appendChild(closeTheaterBtn);
             
             // Добавляем обработчик клавиши Escape для выхода из режима
             const handleEscape = (e) => {
               if (e.key === 'Escape' && playerContainer.classList.contains('theater-mode')) {
-                playerContainer.classList.remove('theater-mode');
-                closeTheaterBtn.remove();
-                // Разрешаем скролл страницы
-                document.body.classList.remove('theater-mode-active');
-                document.removeEventListener('keydown', handleEscape);
+                exitTheaterMode();
               }
             };
             document.addEventListener('keydown', handleEscape);
