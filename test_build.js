@@ -24,94 +24,6 @@
   const KodikToken = "447d179e875efe44217f20d1ee2146be";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
   
-  // Добавляем обработчик горячей клавиши как можно раньше
-  function setupHotkey() {
-    document.addEventListener('keydown', function(event) {
-      // Проверяем, что нажата комбинация Alt+Q
-      if (event.altKey && event.key.toLowerCase() === 'q') {
-        // Предотвращаем действие по умолчанию
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Проверяем, что фокус не на поле ввода
-        const activeElement = document.activeElement;
-        if (activeElement.tagName === 'INPUT' || 
-            activeElement.tagName === 'TEXTAREA' || 
-            activeElement.isContentEditable) {
-          return;
-        }
-        
-        // Вызываем функцию переключения режима
-        toggleTheaterMode();
-      }
-    }, true); // Используем capturing phase для приоритета
-  }
-  
-  // Функции для управления режимом кинотеатра
-  function toggleTheaterMode() {
-    const playerContainer = document.querySelector('.kodik-container');
-    if (!playerContainer) {
-      showNotification("Плеер не найден", "warning");
-      return;
-    }
-
-    if (playerContainer.classList.contains('theater-mode')) {
-      exitTheaterMode();
-      showNotification("Режим кинотеатра выключен", "info");
-    } else {
-      enterTheaterMode(playerContainer);
-      showNotification("Режим кинотеатра включен", "info");
-    }
-  }
-
-  function enterTheaterMode(playerContainer) {
-    playerContainer.classList.add('theater-mode');
-    document.body.classList.add('theater-mode-active');
-
-    // Создаем кнопку закрытия, если ее нет
-    let closeTheaterBtn = document.querySelector('.close-theater-btn');
-    if (!closeTheaterBtn) {
-      closeTheaterBtn = document.createElement('button');
-      closeTheaterBtn.className = 'close-theater-btn';
-      closeTheaterBtn.innerHTML = '&times;';
-      closeTheaterBtn.addEventListener('click', exitTheaterMode);
-      document.body.appendChild(closeTheaterBtn);
-    }
-
-    // Добавляем обработчик Escape, если его еще нет
-    if (!window.theaterModeEscapeHandler) {
-      window.theaterModeEscapeHandler = function(event) {
-        if (event.key === 'Escape') {
-          exitTheaterMode();
-          showNotification("Режим кинотеатра выключен", "info");
-        }
-      };
-      document.addEventListener('keydown', window.theaterModeEscapeHandler);
-    }
-  }
-
-  function exitTheaterMode() {
-    const playerContainer = document.querySelector('.kodik-container');
-    if (playerContainer) {
-      playerContainer.classList.remove('theater-mode');
-    }
-    document.body.classList.remove('theater-mode-active');
-
-    const closeTheaterBtn = document.querySelector('.close-theater-btn');
-    if (closeTheaterBtn) {
-      closeTheaterBtn.remove();
-    }
-
-    // Удаляем обработчик Escape
-    if (window.theaterModeEscapeHandler) {
-      document.removeEventListener('keydown', window.theaterModeEscapeHandler);
-      window.theaterModeEscapeHandler = null;
-    }
-  }
-  
-  // Устанавливаем горячую клавишу немедленно
-  setupHotkey();
-  
   // Объект для хранения настроек
   const playerSettings = {
     rememberQuality: localStorage.getItem('shiki-remember-quality') === 'true',
@@ -1365,8 +1277,6 @@
         </div>
         <div class="changelog-content">
           <ul>
-            <li><strong>v1.46</strong> - Исправлена работа горячей клавиши Alt+Q для переключения режима кинотеатра</li>
-            <li><strong>v1.45</strong> - Добавлена горячая клавиша Alt+Q для переключения режима кинотеатра</li>
             <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
             <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
             <li><strong>v1.42</strong> - Исправлена прокрутка страницы в настройках плеера</li>
@@ -1537,14 +1447,6 @@
                     </label>
                   </div>
                 </div>
-                <div class="settings-section">
-                  <h3>Горячие клавиши</h3>
-                  <div class="settings-option">
-                    <label>
-                      Alt+Q - переключение режима кинотеатра
-                    </label>
-                  </div>
-                </div>
                 <div class="settings-info">
                   <p>Примечание: Некоторые настройки могут не поддерживаться всеми плеерами.</p>
                 </div>
@@ -1657,12 +1559,53 @@
       
       // Добавляем обработчик для кнопки кинотеатра
       if (theaterBtn) {
-        theaterBtn.addEventListener('click', toggleTheaterMode);
+        theaterBtn.addEventListener('click', () => {
+          playerContainer.classList.toggle('theater-mode');
+          
+          if (playerContainer.classList.contains('theater-mode')) {
+            // Запрещаем скролл страницы
+            document.body.classList.add('theater-mode-active');
+            
+            // Создаем кнопку закрытия режима кинотеатра
+            const closeTheaterBtn = document.createElement('button');
+            closeTheaterBtn.className = 'close-theater-btn';
+            closeTheaterBtn.innerHTML = '&times;';
+            
+            // Функция для выхода из режима кинотеатра
+            const exitTheaterMode = () => {
+              playerContainer.classList.remove('theater-mode');
+              closeTheaterBtn.remove();
+              // Разрешаем скролл страницы
+              document.body.classList.remove('theater-mode-active');
+              // Удаляем обработчик Escape
+              document.removeEventListener('keydown', handleEscape);
+            };
+            
+            closeTheaterBtn.addEventListener('click', exitTheaterMode);
+            document.body.appendChild(closeTheaterBtn);
+            
+            // Добавляем обработчик клавиши Escape для выхода из режима
+            const handleEscape = (e) => {
+              if (e.key === 'Escape' && playerContainer.classList.contains('theater-mode')) {
+                exitTheaterMode();
+              }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+            // Убираем уведомление о входе в режим кинотеатра
+          } else {
+            // Удаляем кнопку закрытия, если она существует
+            const closeBtn = document.querySelector('.close-theater-btn');
+            if (closeBtn) closeBtn.remove();
+            // Разрешаем скролл страницы
+            document.body.classList.remove('theater-mode-active');
+          }
+        });
         
         // Создаем всплывающую подсказку для кнопки кинотеатра
         const theaterTooltip = document.createElement('div');
         theaterTooltip.className = 'tooltip';
-        theaterTooltip.textContent = 'Режим кинотеатра (Alt+Q)';
+        theaterTooltip.textContent = 'Режим кинотеатра';
         document.body.appendChild(theaterTooltip);
         
         theaterBtn.addEventListener('mouseenter', () => {
@@ -1743,7 +1686,6 @@
       }
     }
   }
-  
   async function autoPlayerChain(id, playerContainer, episode) {
     // Используем порядок из настроек, но фильтруем только доступные плееры
     const playerOrder = playerSettings.playerOrder.filter(p => playerAvailability[p]);
