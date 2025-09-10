@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.47
+// @version      1.48
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -754,7 +754,8 @@
         }
         .add-to-list-btn,
         .settings-btn,
-        .theater-btn {
+        .theater-btn,
+        .status-btn {
           background: rgba(255, 255, 255, 0.7);
           border: 1px solid rgba(255, 255, 255, 0.5);
           border-radius: 8px;
@@ -773,28 +774,33 @@
         }
         .add-to-list-btn svg,
         .settings-btn svg,
-        .theater-btn svg {
+        .theater-btn svg,
+        .status-btn svg {
           width: 24px;
           height: 24px;
           pointer-events: none;
         }
         .add-to-list-btn:hover,
         .settings-btn:hover,
-        .theater-btn:hover {
+        .theater-btn:hover,
+        .status-btn:hover {
           background-color: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(105, 97, 255, 0.2);
           border-color: rgba(105, 97, 255, 0.5);
           transform: translateY(-2px);
         }
         /* Изменяем порядок отступов для кнопок */
-        .theater-btn {
+        .status-btn {
           /* Первая кнопка, без левого отступа */
         }
-        .add-to-list-btn {
+        .theater-btn {
           margin-left: 10px; /* Вторая кнопка, с левым отступом */
         }
-        .settings-btn {
+        .add-to-list-btn {
           margin-left: 10px; /* Третья кнопка, с левым отступом */
+        }
+        .settings-btn {
+          margin-left: 10px; /* Четвертая кнопка, с левым отступом */
         }
         .tooltip {
           position: fixed;
@@ -1087,28 +1093,32 @@
         /* Темная тема для кнопок */
         .kodik-container.dark-theme .add-to-list-btn,
         .kodik-container.dark-theme .settings-btn,
-        .kodik-container.dark-theme .theater-btn {
+        .kodik-container.dark-theme .theater-btn,
+        .kodik-container.dark-theme .status-btn {
           background: rgba(40, 40, 50, 0.8);
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: #fff;
         }
         .kodik-container.dark-theme .add-to-list-btn:hover,
         .kodik-container.dark-theme .settings-btn:hover,
-        .kodik-container.dark-theme .theater-btn:hover {
+        .kodik-container.dark-theme .theater-btn:hover,
+        .kodik-container.dark-theme .status-btn:hover {
           background: rgba(50, 50, 60, 0.9);
           border-color: #6961ff;
         }
         /* Светлая тема для кнопок */
         .kodik-container.light-theme .add-to-list-btn,
         .kodik-container.light-theme .settings-btn,
-        .kodik-container.light-theme .theater-btn {
+        .kodik-container.light-theme .theater-btn,
+        .kodik-container.light-theme .status-btn {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(0, 0, 0, 0.1);
           color: #000;
         }
         .kodik-container.light-theme .add-to-list-btn:hover,
         .kodik-container.light-theme .settings-btn:hover,
-        .kodik-container.light-theme .theater-btn:hover {
+        .kodik-container.light-theme .theater-btn:hover,
+        .kodik-container.light-theme .status-btn:hover {
           background: #fff;
           border-color: #6961ff;
         }
@@ -1169,14 +1179,67 @@
         .settings-modal-open {
           overflow: hidden !important;
         }
+        /* Стили для выпадающего меню статуса */
+        .status-dropdown {
+          position: fixed;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          min-width: 160px;
+          z-index: 10000;
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(-10px);
+          transition: all 0.3s ease;
+        }
+        .status-dropdown.active {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0);
+        }
+        .status-dropdown-item {
+          padding: 10px 15px;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #333;
+          font-size: 14px;
+          text-align: center;
+        }
+        .status-dropdown-item:first-child {
+          border-radius: 8px 8px 0 0;
+        }
+        .status-dropdown-item:last-child {
+          border-radius: 0 0 8px 8px;
+        }
+        .status-dropdown-item:hover {
+          background: rgba(105, 97, 255, 0.1);
+        }
+        /* Темная тема для выпадающего меню статуса */
+        .status-dropdown.dark-theme {
+          background: rgba(40, 40, 50, 0.95) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        .status-dropdown.dark-theme .status-dropdown-item {
+          color: #fff !important;
+        }
+        .status-dropdown.dark-theme .status-dropdown-item:hover {
+          background: rgba(105, 97, 255, 0.2) !important;
+        }
         @media (max-width: 600px) {
-          .add-to-list-btn, .settings-btn, .theater-btn {
+          .add-to-list-btn, .settings-btn, .theater-btn, .status-btn {
             width: 40px;
             height: 40px;
           }
           .add-to-list-btn svg,
           .settings-btn svg,
-          .theater-btn svg {
+          .theater-btn svg,
+          .status-btn svg {
             width: 20px;
             height: 20px;
           }
@@ -1260,6 +1323,16 @@
       const buttonsContainer = document.createElement('div');
       buttonsContainer.className = 'player-buttons-container';
       
+      // Создаем новую кнопку для изменения статуса (теперь первая)
+      const statusBtn = document.createElement('button');
+      statusBtn.className = 'status-btn';
+      statusBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+      
+      // Создаем кнопку кинотеатра
+      const theaterBtn = document.createElement('button');
+      theaterBtn.className = 'theater-btn';
+      theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+      
       // Создаем кнопки с SVG иконками
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
@@ -1269,12 +1342,8 @@
       settingsBtn.className = 'settings-btn';
       settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
       
-      // Создаем кнопку кинотеатра
-      const theaterBtn = document.createElement('button');
-      theaterBtn.className = 'theater-btn';
-      theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
-      
-      // Изменяем порядок добавления кнопок - кнопка кинотеатра теперь первая
+      // Изменяем порядок добавления кнопок (статус-кнопка теперь первая)
+      buttonsContainer.appendChild(statusBtn);
       buttonsContainer.appendChild(theaterBtn);
       buttonsContainer.appendChild(addToListBtn);
       buttonsContainer.appendChild(settingsBtn);
@@ -1293,6 +1362,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.47</strong> - Добавлена новая кнопка с выпадающим списком для изменения статуса аниме</li>
             <li><strong>v1.46</strong> - Исправлены ошибки с режимом кинотеатра и прокрутки настроек</li>
             <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
             <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
@@ -1382,6 +1452,126 @@
         addToListBtn.addEventListener('mouseleave', () => {
           addToListTooltip.classList.remove('show');
         });
+      }
+      
+      // Добавляем обработчики для кнопки изменения статуса
+      if (statusBtn) {
+        // Создаем выпадающее меню для статуса и добавляем его в body, а не в кнопку
+        const statusDropdown = document.createElement('div');
+        statusDropdown.className = 'status-dropdown';
+        // Применяем класс темы к выпадающему меню
+        statusDropdown.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
+        
+        statusDropdown.innerHTML = `
+          <div class="status-dropdown-item" data-status="watching">Смотрю</div>
+          <div class="status-dropdown-item" data-status="planned">Запланировано</div>
+          <div class="status-dropdown-item" data-status="dropped">Брошено</div>
+          <div class="status-dropdown-item" data-status="remove">Удалить из списка</div>
+        `;
+        
+        document.body.appendChild(statusDropdown);
+        
+        // Функция для позиционирования выпадающего меню
+        function positionStatusDropdown() {
+          const rect = statusBtn.getBoundingClientRect();
+          // Центрируем меню по горизонтали относительно кнопки
+          const dropdownWidth = statusDropdown.offsetWidth;
+          const buttonCenter = rect.left + rect.width / 2;
+          statusDropdown.style.left = `${buttonCenter - dropdownWidth / 2}px`;
+          statusDropdown.style.top = `${rect.bottom + 5}px`;
+        }
+        
+        // Обработчики для кнопки статуса
+        statusBtn.addEventListener('mouseenter', () => {
+          positionStatusDropdown();
+          statusDropdown.classList.add('active');
+        });
+        
+        statusBtn.addEventListener('mouseleave', (e) => {
+          // Проверяем, не уходит ли мышь на выпадающее меню
+          setTimeout(() => {
+            if (!statusDropdown.matches(':hover')) {
+              statusDropdown.classList.remove('active');
+            }
+          }, 100);
+        });
+        
+        // Обработчики для выпадающего меню
+        statusDropdown.addEventListener('mouseenter', () => {
+          statusDropdown.classList.add('active');
+        });
+        
+        statusDropdown.addEventListener('mouseleave', () => {
+          statusDropdown.classList.remove('active');
+        });
+        
+        // Обработчики для элементов выпадающего меню
+        const statusItems = statusDropdown.querySelectorAll('.status-dropdown-item');
+        statusItems.forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const status = item.dataset.status;
+            
+            // Находим соответствующий элемент на странице и кликаем на него
+            let selector;
+            switch(status) {
+              case 'watching':
+                selector = 'span.status-name[data-text="Смотрю"]';
+                break;
+              case 'planned':
+                selector = 'span.status-name[data-text="Запланировано"]';
+                break;
+              case 'dropped':
+                selector = 'span.status-name[data-text="Брошено"]';
+                break;
+              case 'remove':
+                selector = 'span.status-name[data-text="Удалить из списка"]';
+                break;
+            }
+            
+            if (selector) {
+              const statusElement = document.querySelector(selector);
+              if (statusElement) {
+                statusElement.click();
+                showNotification(`Статус изменен на "${item.textContent}"`, 'success');
+              } else {
+                showNotification('Не удалось найти элемент для изменения статуса', 'error');
+              }
+            }
+            
+            // Скрываем выпадающее меню после выбора
+            statusDropdown.classList.remove('active');
+          });
+        });
+        
+        // Обновляем позицию при прокрутке страницы
+        window.addEventListener('scroll', () => {
+          if (statusDropdown.classList.contains('active')) {
+            positionStatusDropdown();
+          }
+        });
+        
+        // Обновляем позицию при изменении размера окна
+        window.addEventListener('resize', () => {
+          if (statusDropdown.classList.contains('active')) {
+            positionStatusDropdown();
+          }
+        });
+        
+        // Функция для обновления темы выпадающего меню
+        window.updateStatusDropdownTheme = function() {
+          // Удаляем оба класса темы
+          statusDropdown.classList.remove('light-theme');
+          statusDropdown.classList.remove('dark-theme');
+          // Добавляем класс выбранной темы
+          if (playerSettings.theme === 'light') {
+            statusDropdown.classList.add('light-theme');
+          } else {
+            statusDropdown.classList.add('dark-theme');
+          }
+          // Обновляем позицию
+          positionStatusDropdown();
+        };
       }
       
       if (settingsBtn) {
@@ -1556,6 +1746,10 @@
             applyTheme(playerContainer, playerSettings.theme);
             // Применение темы к модальному окну
             applyModalTheme(settingsModal, playerSettings.theme);
+            // Применение темы к выпадающему меню статуса
+            if (window.updateStatusDropdownTheme) {
+              window.updateStatusDropdownTheme();
+            }
             
             // Обновляем выпадающий список плееров после сохранения настроек
             updatePlayerDropdown(playerContainer, currentPlayer);
