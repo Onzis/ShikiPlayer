@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.51
+// @version      1.50
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -21,10 +21,9 @@
   let observer = null;
   let currentPlayer = "turbo";
   let isInserting = false;
-  let currentEpisode = 1;
-  let totalEpisodes = 0;
-  const KodikToken = "447d179e875efe44217f20d1ee2146be";
+  const KodikToken = "7f129085d2f372833fcc5e2116e4d0a4";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
+  
   // Объект для хранения настроек
   const playerSettings = {
     rememberQuality: localStorage.getItem('shiki-remember-quality') === 'true',
@@ -35,48 +34,40 @@
     theme: localStorage.getItem('shiki-theme') || 'dark',
     debugMode: localStorage.getItem('shiki-debug-mode') === 'true'
   };
-  // Объект для хранения доступности плееров
+  
+  // Добавляем объект для хранения доступности плееров
   const playerAvailability = {
     turbo: false,
     lumex: false,
     alloha: false,
     kodik: false
   };
+  
   // Функция для отладки
   function debugLog(message, data = null) {
     if (playerSettings.debugMode) {
       console.log(`[ShikiPlayer Debug] ${message}`, data || '');
     }
   }
+  
   // Функция для определения текущего сезона
   function getCurrentSeason() {
     const seasonMatch = location.pathname.match(/\/animes\/[a-z]?(\d+)(?:-s(\d+))?/);
     return seasonMatch && seasonMatch[2] ? parseInt(seasonMatch[2]) : 1;
   }
+  
   function getShikimoriID() {
     const match = location.pathname.match(/\/animes\/(?:[a-z])?(\d+)/);
     return match ? match[1] : null;
   }
-  // Функция для получения общего количества серий
-  function getTotalEpisodes(id) {
-    // Сначала пробуем получить из данных Kodik
-    const kodikData = getCachedData(`kodik_${id}`);
-    if (kodikData && kodikData.results && kodikData.results.length > 0) {
-      return kodikData.results[0].last_episode || 0;
-    }
-    // Если нет данных Kodik, пробуем получить со страницы Shikimori
-    const episodesElement = document.querySelector('.b-db_entry > .c-info-right > .line .value');
-    if (episodesElement) {
-      return parseInt(episodesElement.textContent) || 0;
-    }
-    return 0;
-  }
+  
   function removeOldElements() {
     const oldIframe = document.querySelector(
       'iframe[src*="kodik.cc"], iframe[src*="alloha.tv"], iframe[src*="turbo.to"], iframe[src*="lumex.pro"]'
     );
     oldIframe?.remove();
   }
+  
   function insertPlayerContainer(attempts = 10, delay = 200) {
     if (
       isInserting ||
@@ -99,8 +90,10 @@
       isInserting = false;
     });
   }
+  
   function showNotification(message, type = "info") {
     if (playerSettings.disableNotifications) return;
+    
     if (!document.getElementById('shikip-notif-style-modern')) {
       const style = document.createElement('style');
       style.id = 'shikip-notif-style-modern';
@@ -219,7 +212,7 @@
     setTimeout(hide, 4500);
     notif.querySelector('.notif-close').onclick = hide;
   }
-  // ИСПРАВЛЕНА ФУНКЦИЯ: Теперь использует порядок из настроек
+  
   function playerSelectorHTML(current) {
     let optionsHTML = '';
     // Перебираем плееры в порядке, установленном в настройках
@@ -241,6 +234,7 @@
       </div>
     `;
   }
+  
   if (!document.getElementById('shikip-dropdown-style')) {
     const style = document.createElement('style');
     style.id = 'shikip-dropdown-style';
@@ -289,12 +283,14 @@
     `;
     document.head.appendChild(style);
   }
+  
   async function checkPlayerAvailability(id) {
     playerAvailability.turbo = false;
     playerAvailability.lumex = false;
     playerAvailability.alloha = false;
     playerAvailability.kodik = false;
     debugLog(`Проверка доступности плееров для аниме ID: ${id}`);
+    
     try {
       const kodikResponse = await gmGetWithTimeout(`https://kodikapi.com/search?token=${KodikToken}&shikimori_id=${id}`);
       const kodikData = JSON.parse(kodikResponse);
@@ -307,6 +303,7 @@
       console.warn("Kodik недоступен:", e);
       debugLog("Ошибка при проверке Kodik:", e);
     }
+    
     try {
       const turboUrl = await loadTurboPlayer(id, 1);
       if (turboUrl) {
@@ -317,6 +314,7 @@
       console.warn("Turbo недоступен:", e);
       debugLog("Ошибка при проверке Turbo:", e);
     }
+    
     try {
       const lumexUrl = await loadLumexPlayer(id, 1);
       if (lumexUrl) {
@@ -327,6 +325,7 @@
       console.warn("Lumex недоступен:", e);
       debugLog("Ошибка при проверке Lumex:", e);
     }
+    
     try {
       const allohaUrl = await loadAllohaPlayer(id, 1);
       if (allohaUrl) {
@@ -337,6 +336,7 @@
       console.warn("Alloha недоступен:", e);
       debugLog("Ошибка при проверке Alloha:", e);
     }
+    
     // ИСПРАВЛЕНО: Теперь выбираем первый доступный плеер в порядке настроек
     if (!playerAvailability[currentPlayer]) {
       debugLog(`Текущий плеер ${currentPlayer} недоступен, ищем замену в порядке настроек`);
@@ -348,23 +348,28 @@
         }
       }
     }
+    
     debugLog("Итоговая доступность плееров:", playerAvailability);
     debugLog("Текущий плеер после проверки:", currentPlayer);
   }
+  
   // Функция для настройки drag and drop
   function setupDragAndDrop(container) {
     let draggedItem = null;
+    
     container.addEventListener('dragstart', (e) => {
       if (e.target.classList.contains('player-order-item')) {
         draggedItem = e.target;
         e.target.classList.add('dragging');
       }
     });
+    
     container.addEventListener('dragend', (e) => {
       if (e.target.classList.contains('player-order-item')) {
         e.target.classList.remove('dragging');
       }
     });
+    
     container.addEventListener('dragover', (e) => {
       e.preventDefault();
       const afterElement = getDragAfterElement(container, e.clientY);
@@ -375,6 +380,7 @@
       }
     });
   }
+  
   function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.player-order-item:not(.dragging)')];
     return draggableElements.reduce((closest, child) => {
@@ -387,6 +393,7 @@
       }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
+  
   // Функция для обновления порядка плееров в модальном окне
   function updatePlayerOrderInModal(settingsModal) {
     const playerOrderContainer = settingsModal.querySelector('#player-order-container');
@@ -397,10 +404,12 @@
           <span class="player-name">${player.charAt(0).toUpperCase() + player.slice(1)}</span>
         </div>
       `).join('');
+      
       // Настройка drag and drop для новых элементов
       setupDragAndDrop(playerOrderContainer);
     }
   }
+  
   // Добавляем функцию для получения информации о просмотренных сериях
   function getWatchedEpisodesInfo() {
     const rateNumberElement = document.querySelector('.rate-number');
@@ -409,296 +418,7 @@
     }
     return '';
   }
-  // Функция для создания карусели серий
-  function createEpisodeCarousel(id, playerContainer) {
-    if (totalEpisodes <= 0) return null;
-    const carouselContainer = document.createElement('div');
-    carouselContainer.className = 'episode-carousel-container';
-    const carousel = document.createElement('div');
-    carousel.className = 'episode-carousel';
-    const prevBtn = document.createElement('button');
-    prevBtn.className = 'carousel-nav prev';
-    prevBtn.innerHTML = '&#9664;';
-    prevBtn.disabled = currentEpisode <= 1;
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'carousel-nav next';
-    nextBtn.innerHTML = '&#9654;';
-    nextBtn.disabled = currentEpisode >= totalEpisodes;
-    const container = document.createElement('div');
-    container.className = 'carousel-container';
-    const track = document.createElement('div');
-    track.className = 'carousel-track';
-    // Создаем кнопки для каждой серии
-    for (let i = 1; i <= totalEpisodes; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'episode-btn';
-      btn.dataset.episode = i;
-      btn.textContent = i;
-      if (i === currentEpisode) {
-        btn.classList.add('current');
-      }
-      btn.addEventListener('click', () => {
-        const episode = parseInt(btn.dataset.episode);
-        changeEpisode(episode, id, playerContainer);
-      });
-      track.appendChild(btn);
-    }
-    container.appendChild(track);
-    carousel.appendChild(prevBtn);
-    carousel.appendChild(container);
-    carousel.appendChild(nextBtn);
-    // Создаем прогресс-бар
-    const progressContainer = document.createElement('div');
-    progressContainer.className = 'episode-progress';
-    const progressBar = document.createElement('div');
-    progressBar.className = 'progress-bar';
-    const progressFill = document.createElement('div');
-    progressFill.className = 'progress-fill';
-    const progressText = document.createElement('div');
-    progressText.className = 'progress-text';
-    progressText.textContent = `${currentEpisode} из ${totalEpisodes}`;
-    // Рассчитываем процент заполнения
-    const progressPercentage = totalEpisodes > 0 ? (currentEpisode / totalEpisodes) * 100 : 0;
-    progressFill.style.width = `${progressPercentage}%`;
-    progressBar.appendChild(progressFill);
-    progressContainer.appendChild(progressBar);
-    progressContainer.appendChild(progressText);
-    // Обработчики для кнопок навигации
-    prevBtn.addEventListener('click', () => {
-      if (currentEpisode > 1) {
-        changeEpisode(currentEpisode - 1, id, playerContainer);
-      }
-    });
-    nextBtn.addEventListener('click', () => {
-      if (currentEpisode < totalEpisodes) {
-        changeEpisode(currentEpisode + 1, id, playerContainer);
-      }
-    });
-    // Прокрутка колесиком мыши
-    container.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      container.scrollLeft += e.deltaY;
-    });
-    carouselContainer.appendChild(carousel);
-    carouselContainer.appendChild(progressContainer);
-    return carouselContainer;
-  }
-  // Функция для прокрутки к текущей серии
-  function scrollToCurrentEpisode(playerContainer) {
-    const currentBtn = playerContainer.querySelector('.episode-btn.current');
-    if (!currentBtn) return;
-    const container = playerContainer.querySelector('.carousel-container');
-    if (!container) return;
-    // Небольшая задержка для корректного расчета позиций
-    setTimeout(() => {
-      const btnLeft = currentBtn.offsetLeft;
-      const btnWidth = currentBtn.offsetWidth;
-      const containerWidth = container.offsetWidth;
-      const containerScrollLeft = container.scrollLeft;
-      // Проверяем, видна ли кнопка
-      const btnVisible = btnLeft >= containerScrollLeft &&
-                         (btnLeft + btnWidth) <= (containerScrollLeft + containerWidth);
-      if (!btnVisible) {
-        // Рассчитываем позицию для центрирования кнопки
-        const scrollTo = btnLeft - (containerWidth / 2) + (btnWidth / 2);
-        container.scrollTo({
-          left: scrollTo,
-          behavior: 'smooth'
-        });
-      }
-    }, 50);
-  }
-  // Функция для смены серии
-  function changeEpisode(episode, id, playerContainer) {
-    if (episode < 1 || episode > totalEpisodes) return;
-    currentEpisode = episode;
-    // Сохраняем в кэш
-    localStorage.setItem(`last_episode_${id}`, episode);
-    // Обновляем прогресс-бар
-    const progressFill = playerContainer.querySelector('.progress-fill');
-    const progressText = playerContainer.querySelector('.progress-text');
-    if (progressFill && progressText) {
-      const progressPercentage = totalEpisodes > 0 ? (currentEpisode / totalEpisodes) * 100 : 0;
-      progressFill.style.width = `${progressPercentage}%`;
-      progressText.textContent = `${currentEpisode} из ${totalEpisodes}`;
-    }
-    // Обновляем подсветку кнопок
-    const buttons = playerContainer.querySelectorAll('.episode-btn');
-    buttons.forEach(btn => {
-      btn.classList.remove('current');
-      if (parseInt(btn.dataset.episode) === episode) {
-        btn.classList.add('current');
-      }
-    });
-    // Обновляем состояние кнопок навигации
-    const prevBtn = playerContainer.querySelector('.carousel-nav.prev');
-    const nextBtn = playerContainer.querySelector('.carousel-nav.next');
-    if (prevBtn) prevBtn.disabled = episode <= 1;
-    if (nextBtn) nextBtn.disabled = episode >= totalEpisodes;
-    // Загружаем новую серию
-    showPlayer(currentPlayer, id, playerContainer, episode);
-    // Прокручиваем карусель к текущей серии
-    scrollToCurrentEpisode(playerContainer);
-  }
-  // Добавляем стили для карусели и прогресс-бара
-  if (!document.getElementById('shikip-carousel-style')) {
-    const style = document.createElement('style');
-    style.id = 'shikip-carousel-style';
-    style.textContent = `
-      .episode-carousel-container {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 5px 10px;
-        margin: 10px 0;
-        opacity: 0;
-        transform: translateY(10px);
-        animation: fadeInUp 0.6s ease forwards 0.5s;
-      }
-      .episode-carousel {
-        display: flex;
-        align-items: center;
-        padding: 0 10px;
-        margin-bottom: 8px;
-      }
-      .episode-progress {
-        padding: 0 10px;
-      }
-      .progress-bar {
-        height: 6px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 3px;
-        overflow: hidden;
-        margin-bottom: 6px;
-      }
-      .progress-fill {
-        height: 100%;
-        background: #6961ff;
-        border-radius: 3px;
-        transition: width 0.4s ease;
-      }
-      .progress-text {
-        text-align: center;
-        font-size: 14px;
-        color: #fff;
-        font-weight: 500;
-      }
-      .carousel-nav {
-        background: rgba(255, 255, 255, 0.7);
-        border: none;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 2;
-        transition: all 0.2s;
-        font-size: 14px;
-      }
-      .carousel-nav:hover {
-        background: rgba(105, 97, 255, 0.7);
-      }
-      .carousel-nav:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .carousel-container {
-        flex: 1;
-        overflow: hidden;
-        margin: 0 10px;
-        scroll-behavior: smooth;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .carousel-container::-webkit-scrollbar {
-        display: none;
-      }
-      .carousel-track {
-        display: flex;
-        padding: 5px 0;
-      }
-      .episode-btn {
-        background: rgba(255, 255, 255, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 8px;
-        padding: 8px 12px;
-        margin: 0 5px;
-        cursor: pointer;
-        transition: all 0.2s;
-        min-width: 40px;
-        font-size: 14px;
-        color: #333;
-      }
-      .episode-btn:hover {
-        background: rgba(105, 97, 255, 0.7);
-        color: white;
-      }
-      .episode-btn.current {
-        background: #6961ff;
-        color: white;
-      }
-      /* Темная тема */
-      .kodik-container.dark-theme .progress-bar {
-        background: rgba(255, 255, 255, 0.1);
-      }
-      .kodik-container.dark-theme .progress-text {
-        color: #ddd;
-      }
-      .kodik-container.dark-theme .carousel-nav {
-        background: rgba(60, 60, 70, 0.8);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .kodik-container.dark-theme .episode-btn {
-        background: rgba(60, 60, 70, 0.8);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      .kodik-container.dark-theme .episode-btn:hover {
-        background: rgba(105, 97, 255, 0.7);
-      }
-      /* Светлая тема */
-      .kodik-container.light-theme .progress-bar {
-        background: rgba(0, 0, 0, 0.1);
-      }
-      .kodik-container.light-theme .progress-text {
-        color: #333;
-      }
-      .kodik-container.light-theme .carousel-nav {
-        background: rgba(255, 255, 255, 0.9);
-        color: #333;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-      }
-      .kodik-container.light-theme .episode-btn {
-        background: rgba(255, 255, 255, 0.9);
-        color: #333;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-      }
-      .kodik-container.light-theme .episode-btn:hover {
-        background: rgba(105, 97, 255, 0.5);
-      }
-      @media (max-width: 600px) {
-        .episode-carousel-container {
-          padding: 0 5px;
-        }
-        .carousel-nav {
-          width: 28px;
-          height: 28px;
-          font-size: 12px;
-        }
-        .episode-btn {
-          padding: 6px 10px;
-          margin: 0 3px;
-          min-width: 35px;
-          font-size: 12px;
-        }
-        .progress-text {
-          font-size: 12px;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
+  
   async function createAndInsertPlayer(relatedBlock) {
     if (!document.querySelector("style#kodik-styles")) {
       const style = document.createElement("style");
@@ -843,7 +563,7 @@
           transition: all 0.3s ease;
           max-height: 40px;
           opacity: 0;
-          animation: fadeIn 0.6s ease forwards 0.9s;
+          animation: fadeIn 0.6s ease forwards 0.7s;
         }
         .shikip-changelog.expanded {
           max-height: 300px;
@@ -1038,6 +758,7 @@
       `;
       document.head.appendChild(style);
     }
+    
     if (!document.getElementById('shikip-theater-btn-style')) {
       const style = document.createElement('style');
       style.id = 'shikip-theater-btn-style';
@@ -1435,7 +1156,6 @@
         }
         .kodik-container.theater-mode .kodik-header,
         .kodik-container.theater-mode .player-buttons-container,
-        .kodik-container.theater-mode .episode-carousel-container,
         .kodik-container.theater-mode .shikip-changelog {
           display: none;
         }
@@ -1563,22 +1283,15 @@
       `;
       document.head.appendChild(style);
     }
+    
     const playerContainer = document.createElement("div");
     playerContainer.classList.add("kodik-container");
     // Применяем сохраненную тему
     playerContainer.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
+    
     const id = getShikimoriID();
     if (!id) return;
-    // Получаем общее количество серий
-    totalEpisodes = getTotalEpisodes(id);
-    // Получаем последнюю просмотренную серию из кэша
-    const lastEpisodeKey = `last_episode_${id}`;
-    const savedEpisode = localStorage.getItem(lastEpisodeKey);
-    if (savedEpisode) {
-      currentEpisode = Math.min(Math.max(parseInt(savedEpisode), 1), totalEpisodes || 1);
-    } else {
-      currentEpisode = 1;
-    }
+    
     playerContainer.innerHTML = `
       <div class="kodik-header">
         <span>ОНЛАЙН ПРОСМОТР</span>
@@ -1591,7 +1304,9 @@
         </div>
       </div>
     `;
+    
     relatedBlock.parentNode.insertBefore(playerContainer, relatedBlock);
+    
     const checkPromise = checkPlayerAvailability(id);
     checkPromise.then(() => {
       if (!Object.values(playerAvailability).some(Boolean)) {
@@ -1606,6 +1321,7 @@
         `;
         return;
       }
+      
       const headerElement = document.createElement("div");
       headerElement.className = "kodik-header";
       headerElement.innerHTML = `
@@ -1614,6 +1330,7 @@
           ${playerSelectorHTML(currentPlayer)}
         </div>
       `;
+      
       const playerWrapper = document.createElement("div");
       playerWrapper.className = "player-wrapper";
       playerWrapper.innerHTML = `
@@ -1622,28 +1339,35 @@
           <div>Загрузка...</div>
         </div>
       `;
+      
       const buttonsContainer = document.createElement('div');
       buttonsContainer.className = 'player-buttons-container';
+      
       // Создаем новую кнопку для изменения статуса (теперь первая)
       const statusBtn = document.createElement('button');
       statusBtn.className = 'status-btn';
       statusBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+      
       // Создаем кнопку кинотеатра
       const theaterBtn = document.createElement('button');
       theaterBtn.className = 'theater-btn';
       theaterBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`;
+      
       // Создаем кнопки с SVG иконками
       const addToListBtn = document.createElement('button');
       addToListBtn.className = 'add-to-list-btn';
       addToListBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+      
       const settingsBtn = document.createElement('button');
       settingsBtn.className = 'settings-btn';
       settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
+      
       // Изменяем порядок добавления кнопок (статус-кнопка теперь первая)
       buttonsContainer.appendChild(statusBtn);
       buttonsContainer.appendChild(theaterBtn);
       buttonsContainer.appendChild(addToListBtn);
       buttonsContainer.appendChild(settingsBtn);
+      
       const changelogBlock = document.createElement("div");
       changelogBlock.className = "shikip-changelog";
       changelogBlock.innerHTML = `
@@ -1658,101 +1382,100 @@
         </div>
         <div class="changelog-content">
           <ul>
-            <li><strong>v1.51</strong> - Исправлена синхронизация выбора серии между каруселью и всеми плеерами</li>
-            <li><strong>v1.50</strong> - Добавлена автоматическая прокрутка к выбранной серии</li>
-            <li><strong>v1.49</strong> - Добавлена карусель серий</li>
-            <li><strong>v1.48</strong> - Добавлена новая кнопка для изменения статуса аниме</li>
-            <li><strong>v1.47</strong> - Исправлены ошибки с режимом кинотеатра и прокрутки настроек</li>
-            <li><strong>v1.45</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
-            <li><strong>v1.44</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
-            <li><strong>v1.43</strong> - Исправлена прокрутка страницы в настройках плеера</li>
-            <li><strong>v1.42</strong> - Исправлено отображение порядка плееров в выпадающем списке</li>
-            <li><strong>v1.41</strong> - Исправлена работа порядка плееров в настройках</li>
-            <li><strong>v1.40</strong> - Исправлена работа плееров Turbo и Lumex, добавлена отладка</li>
-            <li><strong>v1.39</strong> - Исправлены иконки кнопок и тема настроек</li>
-            <li><strong>v1.38</strong> - Исправлено переключение тем плеера</li>
-            <li><strong>v1.37</strong> - Добавлена возможность выбора темы плеера (светлая/темная)</li>
-            <li><strong>v1.35</strong> - Исправлен порядок блоков в настройках | Добавлена прокрутка для настроек</li>
-            <li><strong>v1.34</strong> - Добавлены настройки: плеер по умолчанию, порядок плееров, отключение уведомлений</li>
-            <li><strong>v1.33</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
-            <li><strong>v1.32</strong> - Добавлена кнопка настроек плеера с возможностью сохранения предпочтений</li>
-            <li><strong>v1.31</strong> - Исправлена работа с Alloha | Добавлены кнопки с добавлением серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
+            <li><strong>v1.50</strong> - Исправлены ошибки загрузки Turbo и Lumex плееров</li>
+            <li><strong>v1.49</strong> - Обновлен токен для Кодик</li>
+            <li><strong>v1.47</strong> - Добавлена новая кнопка для изменения статуса аниме</li>
+            <li><strong>v1.46</strong> - Исправлены ошибки с режимом кинотеатра и прокрутки настроек</li>
+            <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
+            <li><strong>v1.43</strong> - Исправлена подсветка блока "История изменений" в темной теме</li>
+            <li><strong>v1.42</strong> - Исправлена прокрутка страницы в настройках плеера</li>
+            <li><strong>v1.41</strong> - Исправлено отображение порядка плееров в выпадающем списке</li>
+            <li><strong>v1.40</strong> - Исправлена работа порядка плееров в настройках</li>
+            <li><strong>v1.39</strong> - Исправлена работа плееров Turbo и Lumex, добавлена отладка</li>
+            <li><strong>v1.38</strong> - Исправлены иконки кнопок и тема настроек</li>
+            <li><strong>v1.37</strong> - Исправлено переключение тем плеера</li>
+            <li><strong>v1.36</strong> - Добавлена возможность выбора темы плеера (светлая/темная)</li>
+            <li><strong>v1.34</strong> - Исправлен порядок блоков в настройках | Добавлена прокрутка для настроек</li>
+            <li><strong>v1.33</strong> - Добавлены настройки: плеер по умолчанию, порядок плееров, отключение уведомлений</li>
+            <li><strong>v1.32</strong> - Обновлена иконка кнопки настроек | Упрощены настройки плеера</li>
+            <li><strong>v1.31</strong> - Добавлена кнопка настроек плеера с возможностью сохранения предпочтений</li>
+            <li><strong>v1.30</strong> - Исправлена работа с Alloha | Добавлены кнопки с добавлением серии в просмотрено (+1) | Добавлены анимации | Теперь недоступные плееры будут скрываться </li>
           </ul>
         </div>
       `;
+      
       playerContainer.innerHTML = '';
       playerContainer.appendChild(headerElement);
       playerContainer.appendChild(playerWrapper);
-      // Добавляем карусель серий после плеера
-      if (totalEpisodes > 0) {
-        const carouselContainer = createEpisodeCarousel(id, playerContainer);
-        if (carouselContainer) {
-          playerContainer.appendChild(carouselContainer);
-          // Прокручиваем к текущей серии после создания карусели
-          setTimeout(() => scrollToCurrentEpisode(playerContainer), 100);
-        }
-      }
-      // Добавляем кнопки управления после карусели
       playerContainer.appendChild(buttonsContainer);
       playerContainer.appendChild(changelogBlock);
+      
       const header = changelogBlock.querySelector('.changelog-header');
       header.addEventListener('click', () => {
         changelogBlock.classList.toggle('expanded');
       });
+      
       if (observer) observer.disconnect();
-      const startEpisode = currentEpisode; // Сохраняем начальное значение для использования в autoPlayerChain
+      
+      const startEpisode = 1;
       const playerDropdown = playerContainer.querySelector("#player-dropdown");
       if (playerDropdown) {
         playerDropdown.addEventListener("change", (e) => {
           if (e.target.value) {
-            manualSwitchPlayer(e.target.value, id, playerContainer, currentEpisode); // Используем currentEpisode!
+            manualSwitchPlayer(e.target.value, id, playerContainer, startEpisode);
           }
         });
       }
+      
       if (addToListBtn) {
         addToListBtn.addEventListener('click', () => {
           const incrementButton = document.querySelector('.item-add.increment');
           if (incrementButton) {
             incrementButton.click();
             showNotification('Добавлена серия в просмотрено', 'success');
+            
             // Обновляем подсказку после добавления серии
             setTimeout(() => {
               const watchedInfo = getWatchedEpisodesInfo();
               if (watchedInfo) {
-                addToListTooltip.textContent = `Добавить серию в просмотрено
-${watchedInfo}`;
+                addToListTooltip.textContent = `Добавить серию в просмотрено\n${watchedInfo}`;
               }
             }, 500); // Небольшая задержка для обновления DOM
           } else {
             showNotification('Не найдена кнопка добавления серии в просмотрено', 'warning');
           }
         });
+        
         // Создаем всплывающую подсказку для кнопки добавления в список
         const addToListTooltip = document.createElement('div');
         addToListTooltip.className = 'tooltip';
+        
         // Получаем текущую информацию о просмотренных сериях
         const watchedInfo = getWatchedEpisodesInfo();
-        addToListTooltip.textContent = watchedInfo
-          ? `Добавить серию в просмотрено
-${watchedInfo}`
+        addToListTooltip.textContent = watchedInfo 
+          ? `Добавить серию в просмотрено\n${watchedInfo}` 
           : 'Добавить серию в просмотрено';
+        
         document.body.appendChild(addToListTooltip);
+        
         addToListBtn.addEventListener('mouseenter', () => {
           // Обновляем информацию при каждом наведении на случай изменений
           const watchedInfo = getWatchedEpisodesInfo();
-          addToListTooltip.textContent = watchedInfo
-            ? `Добавить серию в просмотрено
-${watchedInfo}`
+          addToListTooltip.textContent = watchedInfo 
+            ? `Добавить серию в просмотрено\n${watchedInfo}` 
             : 'Добавить серию в просмотрено';
+          
           const rect = addToListBtn.getBoundingClientRect();
           addToListTooltip.style.left = `${rect.left + rect.width / 2}px`;
           addToListTooltip.style.top = `${rect.bottom + 5}px`;
           addToListTooltip.classList.add('show');
         });
+        
         addToListBtn.addEventListener('mouseleave', () => {
           addToListTooltip.classList.remove('show');
         });
       }
+      
       // Добавляем обработчики для кнопки изменения статуса
       if (statusBtn) {
         // Создаем выпадающее меню для статуса и добавляем его в body, а не в кнопку
@@ -1760,13 +1483,16 @@ ${watchedInfo}`
         statusDropdown.className = 'status-dropdown';
         // Применяем класс темы к выпадающему меню
         statusDropdown.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
+        
         statusDropdown.innerHTML = `
           <div class="status-dropdown-item" data-status="watching">Смотрю</div>
           <div class="status-dropdown-item" data-status="planned">Запланировано</div>
           <div class="status-dropdown-item" data-status="dropped">Брошено</div>
           <div class="status-dropdown-item" data-status="remove">Удалить из списка</div>
         `;
+        
         document.body.appendChild(statusDropdown);
+        
         // Функция для позиционирования выпадающего меню
         function positionStatusDropdown() {
           const rect = statusBtn.getBoundingClientRect();
@@ -1776,11 +1502,13 @@ ${watchedInfo}`
           statusDropdown.style.left = `${buttonCenter - dropdownWidth / 2}px`;
           statusDropdown.style.top = `${rect.bottom + 5}px`;
         }
+        
         // Обработчики для кнопки статуса
         statusBtn.addEventListener('mouseenter', () => {
           positionStatusDropdown();
           statusDropdown.classList.add('active');
         });
+        
         statusBtn.addEventListener('mouseleave', (e) => {
           // Проверяем, не уходит ли мышь на выпадающее меню
           setTimeout(() => {
@@ -1789,19 +1517,23 @@ ${watchedInfo}`
             }
           }, 100);
         });
+        
         // Обработчики для выпадающего меню
         statusDropdown.addEventListener('mouseenter', () => {
           statusDropdown.classList.add('active');
         });
+        
         statusDropdown.addEventListener('mouseleave', () => {
           statusDropdown.classList.remove('active');
         });
+        
         // Обработчики для элементов выпадающего меню
         const statusItems = statusDropdown.querySelectorAll('.status-dropdown-item');
         statusItems.forEach(item => {
           item.addEventListener('click', (e) => {
             e.stopPropagation();
             const status = item.dataset.status;
+            
             // Находим соответствующий элемент на странице и кликаем на него
             let selector;
             switch(status) {
@@ -1818,6 +1550,7 @@ ${watchedInfo}`
                 selector = 'span.status-name[data-text="Удалить из списка"]';
                 break;
             }
+            
             if (selector) {
               const statusElement = document.querySelector(selector);
               if (statusElement) {
@@ -1827,22 +1560,26 @@ ${watchedInfo}`
                 showNotification('Не удалось найти элемент для изменения статуса', 'error');
               }
             }
+            
             // Скрываем выпадающее меню после выбора
             statusDropdown.classList.remove('active');
           });
         });
+        
         // Обновляем позицию при прокрутке страницы
         window.addEventListener('scroll', () => {
           if (statusDropdown.classList.contains('active')) {
             positionStatusDropdown();
           }
         });
+        
         // Обновляем позицию при изменении размера окна
         window.addEventListener('resize', () => {
           if (statusDropdown.classList.contains('active')) {
             positionStatusDropdown();
           }
         });
+        
         // Функция для обновления темы выпадающего меню
         window.updateStatusDropdownTheme = function() {
           // Удаляем оба класса темы
@@ -1858,6 +1595,7 @@ ${watchedInfo}`
           positionStatusDropdown();
         };
       }
+      
       if (settingsBtn) {
         // Создаем модальное окно настроек
         let settingsModal = document.getElementById('player-settings-modal');
@@ -1867,6 +1605,7 @@ ${watchedInfo}`
           settingsModal.className = 'settings-modal';
           // Применяем тему к модальному окну
           settingsModal.classList.add(playerSettings.theme === 'light' ? 'light-theme' : 'dark-theme');
+          
           settingsModal.innerHTML = `
             <div class="settings-modal-content">
               <div class="settings-header">
@@ -1905,8 +1644,8 @@ ${watchedInfo}`
                   <h3>Воспроизведение</h3>
                   <div class="settings-option">
                     <label>
-                      Запоминать качество видео
                       <input type="checkbox" id="remember-quality" ${playerSettings.rememberQuality ? 'checked' : ''}>
+                      Запоминать качество видео
                     </label>
                   </div>
                   <div class="settings-option">
@@ -1943,8 +1682,8 @@ ${watchedInfo}`
                   <h3>Уведомления</h3>
                   <div class="settings-option">
                     <label>
-                      Отключить уведомления
                       <input type="checkbox" id="disable-notifications" ${playerSettings.disableNotifications ? 'checked' : ''}>
+                      Отключить уведомления
                     </label>
                   </div>
                 </div>
@@ -1952,8 +1691,8 @@ ${watchedInfo}`
                   <h3>Диагностика</h3>
                   <div class="settings-option">
                     <label>
-                      Режим отладки (вывод в консоль)
                       <input type="checkbox" id="debug-mode" ${playerSettings.debugMode ? 'checked' : ''}>
+                      Режим отладки (вывод в консоль)
                     </label>
                   </div>
                 </div>
@@ -1964,10 +1703,13 @@ ${watchedInfo}`
               <button class="settings-save-btn">Сохранить настройки</button>
             </div>
           `;
+          
           document.body.appendChild(settingsModal);
+          
           // Настройка drag and drop для порядка плееров
           const playerOrderContainer = settingsModal.querySelector('#player-order-container');
           setupDragAndDrop(playerOrderContainer);
+          
           // Обработчики событий для выбора темы
           const themeOptions = settingsModal.querySelectorAll('.theme-option');
           themeOptions.forEach(option => {
@@ -1976,6 +1718,7 @@ ${watchedInfo}`
               option.classList.add('selected');
             });
           });
+          
           // Обработчики событий
           const closeBtn = settingsModal.querySelector('.close-settings');
           closeBtn.addEventListener('click', () => {
@@ -1983,6 +1726,7 @@ ${watchedInfo}`
             // Разблокируем прокрутку страницы
             document.body.classList.remove('settings-modal-open');
           });
+          
           window.addEventListener('click', (e) => {
             if (e.target === settingsModal) {
               settingsModal.style.display = 'none';
@@ -1990,6 +1734,7 @@ ${watchedInfo}`
               document.body.classList.remove('settings-modal-open');
             }
           });
+          
           const saveBtn = settingsModal.querySelector('.settings-save-btn');
           saveBtn.addEventListener('click', () => {
             // Сохранение настроек
@@ -1998,15 +1743,18 @@ ${watchedInfo}`
             playerSettings.defaultPlayer = document.getElementById('default-player').value;
             playerSettings.disableNotifications = document.getElementById('disable-notifications').checked;
             playerSettings.debugMode = document.getElementById('debug-mode').checked;
+            
             // Сохранение темы
             const selectedTheme = settingsModal.querySelector('.theme-option.selected');
             if (selectedTheme) {
               playerSettings.theme = selectedTheme.dataset.theme;
             }
+            
             // Сохранение порядка плееров
             const playerOrderItems = document.querySelectorAll('.player-order-item');
             playerSettings.playerOrder = Array.from(playerOrderItems).map(item => item.dataset.player);
             debugLog("Сохраняемый порядок плееров:", playerSettings.playerOrder);
+            
             // Сохранение в localStorage
             localStorage.setItem('shiki-remember-quality', playerSettings.rememberQuality);
             localStorage.setItem('shiki-default-quality', playerSettings.defaultQuality);
@@ -2015,6 +1763,7 @@ ${watchedInfo}`
             localStorage.setItem('shiki-disable-notifications', playerSettings.disableNotifications);
             localStorage.setItem('shiki-theme', playerSettings.theme);
             localStorage.setItem('shiki-debug-mode', playerSettings.debugMode);
+            
             // Применение темы
             applyTheme(playerContainer, playerSettings.theme);
             // Применение темы к модальному окну
@@ -2023,13 +1772,16 @@ ${watchedInfo}`
             if (window.updateStatusDropdownTheme) {
               window.updateStatusDropdownTheme();
             }
+            
             // Обновляем выпадающий список плееров после сохранения настроек
             updatePlayerDropdown(playerContainer, currentPlayer);
+            
             showNotification('Настройки сохранены', 'success');
             settingsModal.style.display = 'none';
             // Разблокируем прокрутку страницы
             document.body.classList.remove('settings-modal-open');
           });
+          
           // Добавляем обработчик клавиши Escape для закрытия модального окна
           document.addEventListener('keydown', function handleEscKey(e) {
             if (e.key === 'Escape' && settingsModal.style.display === 'block') {
@@ -2039,6 +1791,7 @@ ${watchedInfo}`
             }
           });
         }
+        
         settingsBtn.addEventListener('click', () => {
           // Обновляем порядок плееров в модальном окне перед открытием
           updatePlayerOrderInModal(settingsModal);
@@ -2047,38 +1800,46 @@ ${watchedInfo}`
           settingsModal.style.display = 'block';
           // Блокируем прокрутку страницы
           document.body.classList.add('settings-modal-open');
+          
           // Сбрасываем скролл модального окна в начало
           const settingsBody = settingsModal.querySelector('.settings-body');
           if (settingsBody) {
             settingsBody.scrollTop = 0;
           }
         });
+        
         // Создаем всплывающую подсказку для кнопки настроек
         const settingsTooltip = document.createElement('div');
         settingsTooltip.className = 'tooltip';
         settingsTooltip.textContent = 'Настройки плеера';
         document.body.appendChild(settingsTooltip);
+        
         settingsBtn.addEventListener('mouseenter', () => {
           const rect = settingsBtn.getBoundingClientRect();
           settingsTooltip.style.left = `${rect.left + rect.width / 2}px`;
           settingsTooltip.style.top = `${rect.bottom + 5}px`;
           settingsTooltip.classList.add('show');
         });
+        
         settingsBtn.addEventListener('mouseleave', () => {
           settingsTooltip.classList.remove('show');
         });
       }
+      
       // Добавляем обработчик для кнопки кинотеатра
       if (theaterBtn) {
         theaterBtn.addEventListener('click', () => {
           playerContainer.classList.toggle('theater-mode');
+          
           if (playerContainer.classList.contains('theater-mode')) {
             // Запрещаем скролл страницы
             document.body.classList.add('theater-mode-active');
+            
             // Создаем кнопку закрытия режима кинотеатра
             const closeTheaterBtn = document.createElement('button');
             closeTheaterBtn.className = 'close-theater-btn';
             closeTheaterBtn.innerHTML = '&times;';
+            
             // Функция для выхода из режима кинотеатра
             const exitTheaterMode = () => {
               playerContainer.classList.remove('theater-mode');
@@ -2088,8 +1849,10 @@ ${watchedInfo}`
               // Удаляем обработчик Escape
               document.removeEventListener('keydown', handleEscape);
             };
+            
             closeTheaterBtn.addEventListener('click', exitTheaterMode);
             document.body.appendChild(closeTheaterBtn);
+            
             // Добавляем обработчик клавиши Escape для выхода из режима
             const handleEscape = (e) => {
               if (e.key === 'Escape' && playerContainer.classList.contains('theater-mode')) {
@@ -2097,6 +1860,7 @@ ${watchedInfo}`
               }
             };
             document.addEventListener('keydown', handleEscape);
+            
             // Убираем уведомление о входе в режим кинотеатра
           } else {
             // Удаляем кнопку закрытия, если она существует
@@ -2106,23 +1870,27 @@ ${watchedInfo}`
             document.body.classList.remove('theater-mode-active');
           }
         });
+        
         // Создаем всплывающую подсказку для кнопки кинотеатра
         const theaterTooltip = document.createElement('div');
         theaterTooltip.className = 'tooltip';
         theaterTooltip.textContent = 'Режим кинотеатра';
         document.body.appendChild(theaterTooltip);
+        
         theaterBtn.addEventListener('mouseenter', () => {
           const rect = theaterBtn.getBoundingClientRect();
           theaterTooltip.style.left = `${rect.left + rect.width / 2}px`;
           theaterTooltip.style.top = `${rect.bottom + 5}px`;
           theaterTooltip.classList.add('show');
         });
+        
         theaterBtn.addEventListener('mouseleave', () => {
           theaterTooltip.classList.remove('show');
         });
       }
+      
       setupLazyLoading(playerContainer, () =>
-        autoPlayerChain(id, playerContainer, currentEpisode) // Используем currentEpisode!
+        autoPlayerChain(id, playerContainer, startEpisode)
       );
     }).catch(error => {
       console.error("Ошибка при проверке доступности плееров:", error);
@@ -2137,6 +1905,7 @@ ${watchedInfo}`
       `;
     });
   }
+  
   // Функция для применения темы к плееру
   function applyTheme(playerContainer, theme) {
     // Удаляем оба класса темы
@@ -2149,6 +1918,7 @@ ${watchedInfo}`
       playerContainer.classList.add('dark-theme');
     }
   }
+  
   // Функция для применения темы к модальному окну настроек
   function applyModalTheme(settingsModal, theme) {
     // Удаляем оба класса темы
@@ -2161,6 +1931,7 @@ ${watchedInfo}`
       settingsModal.classList.add('dark-theme');
     }
   }
+  
   // НОВАЯ ФУНКЦИЯ: Обновление выпадающего списка плееров
   function updatePlayerDropdown(playerContainer, current) {
     const playerDropdown = playerContainer.querySelector("#player-dropdown");
@@ -2187,29 +1958,34 @@ ${watchedInfo}`
       }
     }
   }
+  
   async function autoPlayerChain(id, playerContainer, episode) {
     // Используем порядок из настроек, но фильтруем только доступные плееры
     const playerOrder = playerSettings.playerOrder.filter(p => playerAvailability[p]);
     debugLog("Доступные плееры в порядке приоритета:", playerOrder);
+    
     if (playerOrder.length === 0) {
       showNotification("Нет доступных плееров для этого аниме", "error");
       return;
     }
+    
     // Если есть плеер по умолчанию и он доступен, начинаем с него
     let startIndex = 0;
     if (playerAvailability[playerSettings.defaultPlayer]) {
       startIndex = playerOrder.indexOf(playerSettings.defaultPlayer);
       if (startIndex === -1) startIndex = 0;
     }
+    
     // Создаем новый порядок, начиная с плеера по умолчанию
     const orderedPlayers = [...playerOrder.slice(startIndex), ...playerOrder.slice(0, startIndex)];
     debugLog("Итоговый порядок воспроизведения:", orderedPlayers);
+    
     let lastError = null;
     for (const playerType of orderedPlayers) {
       try {
         currentPlayer = playerType;
         playerContainer.querySelector("#player-dropdown").value = playerType;
-        await showPlayer(playerType, id, playerContainer, currentEpisode); // Используем currentEpisode!
+        await showPlayer(playerType, id, playerContainer, episode);
         return;
       } catch (error) {
         lastError = error;
@@ -2217,18 +1993,22 @@ ${watchedInfo}`
         showNotification(`${playerType} недоступен, пробую следующий...`, "warning");
       }
     }
+    
     if (lastError) {
       showNotification(`Все плееры недоступны: ${lastError.message}`, "error");
     }
   }
+  
   async function manualSwitchPlayer(playerType, id, playerContainer, episode) {
     if (!playerAvailability[playerType]) {
       showNotification(`Плеер ${playerType} недоступен`, "error");
       return;
     }
+    
     currentPlayer = playerType;
-    await showPlayer(playerType, id, playerContainer, currentEpisode); // Используем currentEpisode!
+    await showPlayer(playerType, id, playerContainer, episode);
   }
+  
   async function showPlayer(playerType, id, playerContainer, episode) {
     const playerWrapper = playerContainer.querySelector(".player-wrapper");
     playerWrapper.innerHTML = `
@@ -2237,16 +2017,19 @@ ${watchedInfo}`
         <div>Загрузка...</div>
       </div>
     `;
+    
     try {
       if (playerType === "alloha" && !checkVideoCodecSupport()) {
         showNotification("Ваш браузер не поддерживает необходимые кодеки для Alloha плеера.", "error");
         throw new Error("Ваш браузер не поддерживает необходимые кодеки для Alloha");
       }
+      
       const iframe = document.createElement("iframe");
       iframe.allowFullscreen = true;
       iframe.setAttribute("allow", "autoplay *; fullscreen *; encrypted-media");
       iframe.setAttribute("playsinline", "true");
       iframe.setAttribute("loading", "lazy");
+      
       if (playerType === "turbo") {
         try {
           const iframeUrl = await loadTurboPlayer(id, episode);
@@ -2295,8 +2078,10 @@ ${watchedInfo}`
         showNotification("Неизвестный тип плеера.", "error");
         throw new Error("Неизвестный тип плеера");
       }
+      
       playerWrapper.innerHTML = "";
       playerWrapper.appendChild(iframe);
+      
       setTimeout(() => {
         if (!iframe.contentWindow || (iframe.contentDocument && iframe.contentDocument.body.innerHTML.trim() === "")) {
           if (playerType === "turbo") throw new Error("Turbo 404");
@@ -2310,6 +2095,7 @@ ${watchedInfo}`
       throw error;
     }
   }
+  
   function gmGetWithTimeout(url, options = {}) {
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest({
@@ -2323,6 +2109,7 @@ ${watchedInfo}`
       });
     });
   }
+  
   function getCachedData(key) {
     const cached = localStorage.getItem(key);
     if (cached) {
@@ -2331,9 +2118,11 @@ ${watchedInfo}`
     }
     return null;
   }
+  
   function setCachedData(key, data) {
     localStorage.setItem(key, JSON.stringify({ data }));
   }
+  
   async function loadAllohaPlayer(id, episode) {
     const season = getCurrentSeason();
     const cacheKey = `alloha_${id}_s${season}`;
@@ -2341,6 +2130,7 @@ ${watchedInfo}`
     if (iframeUrl) {
       return `${iframeUrl}&episode=${episode}&season=${season}`;
     }
+    
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -2354,27 +2144,32 @@ ${watchedInfo}`
         throw new Error("Ошибка загрузки данных Kodik API");
       }
     }
+    
     const results = kodikData.results;
     if (!results?.length) {
       debugLog("Нет результатов от Kodik API для Alloha");
       showNotification("Нет результатов от Kodik API для Alloha.", "error");
       throw new Error("Нет результатов от Kodik API");
     }
+    
     const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
       ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
       : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+    
     if (!allohaUrl) {
       debugLog("Kinopoisk ID или IMDB ID не найдены для Alloha");
       showNotification("Kinopoisk ID или IMDB ID не найдены для Alloha.", "error");
       throw new Error("Kinopoisk ID или IMDB ID не найдены");
     }
+    
     async function tryFetchAlloha(retries = 3, delayMs = 1000) {
       for (let i = 0; i < retries; i++) {
         try {
           const allohaResponse = await gmGetWithTimeout(allohaUrl);
           const allohaData = JSON.parse(allohaResponse);
           debugLog("Ответ Alloha API:", allohaData);
+          
           if (allohaData.status === "success" && allohaData.data?.iframe) {
             return allohaData.data.iframe;
           } else {
@@ -2390,6 +2185,7 @@ ${watchedInfo}`
         }
       }
     }
+    
     try {
       const allohaIframeUrl = await tryFetchAlloha();
       setCachedData(cacheKey, allohaIframeUrl);
@@ -2401,18 +2197,18 @@ ${watchedInfo}`
       throw new Error("Ошибка загрузки Alloha: " + error.message);
     }
   }
+  
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ TURBO
   async function loadTurboPlayer(id, episode) {
     debugLog(`Загрузка Turbo плеера для аниме ID: ${id}, серия: ${episode}`);
     const cacheKey = `turbo_${id}`;
     let iframeUrl = getCachedData(cacheKey);
     if (iframeUrl) {
       debugLog("Используем кешированный URL для Turbo");
-      // Добавляем параметр эпизода, если он есть
-      if (episode && episode > 1) {
-        iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + `episode=${episode}`;
-      }
       return iframeUrl;
     }
+    
+    // Пытаемся получить данные из Kodik API
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -2423,35 +2219,50 @@ ${watchedInfo}`
         debugLog("Получены данные от Kodik API для Turbo");
       } catch (error) {
         debugLog("Ошибка загрузки данных Kodik API для Turbo:", error);
-        showNotification("Ошибка загрузки данных Kodik API для Turbo.", "error");
-        throw new Error("Ошибка загрузки данных Kodik API");
+        // Не прерываем выполнение, а пробуем альтернативный метод
       }
     }
-    const results = kodikData.results;
-    if (!results?.length) {
-      debugLog("Нет результатов от Kodik API для Turbo");
-      showNotification("Нет результатов от Kodik API для Turbo.", "error");
-      throw new Error("Нет результатов от Kodik API");
+    
+    // Альтернативный метод: прямой запрос к Turbo
+    try {
+      const turboUrl = `https://turbo.to/embed/shikimori/${id}?episode=${episode}`;
+      debugLog(`Пробуем прямой URL для Turbo: ${turboUrl}`);
+      
+      // Проверяем доступность URL
+      const response = await gmGetWithTimeout(turboUrl, {
+        headers: {
+          Referer: "https://turbo.to/",
+          Origin: "https://turbo.to",
+        }
+      });
+      
+      if (response && response.length > 0) {
+        setCachedData(cacheKey, turboUrl);
+        debugLog("Turbo плеер успешно загружен через прямой URL");
+        return turboUrl;
+      }
+    } catch (error) {
+      debugLog("Ошибка при загрузке Turbo через прямой URL:", error);
     }
-    const { kinopoisk_id, worldart_id, shikimori_id } = results[0];
-    debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
-    // Пробуем разные варианты получения данных
-    let kinoboxUrl = null;
-    if (kinopoisk_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
-    } else if (worldart_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
-    } else if (shikimori_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
-    }
-    if (!kinoboxUrl) {
-      debugLog("Не найден подходящий ID для запроса к Kinobox API");
-      showNotification("Не найден подходящий ID для Turbo.", "error");
-      throw new Error("Не найден подходящий ID");
-    }
-    debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
-    async function tryFetchKinobox(retries = 3) {
-      for (let i = 0; i < retries; i++) {
+    
+    // Если прямой метод не сработал, пробуем через Kinobox
+    if (kodikData && kodikData.results && kodikData.results.length > 0) {
+      const { kinopoisk_id, worldart_id, shikimori_id } = kodikData.results[0];
+      debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
+      
+      // Пробуем разные варианты получения данных
+      let kinoboxUrl = null;
+      if (kinopoisk_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+      } else if (worldart_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
+      } else if (shikimori_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
+      }
+      
+      if (kinoboxUrl) {
+        debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
+        
         try {
           const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
             headers: {
@@ -2462,49 +2273,43 @@ ${watchedInfo}`
           });
           const kinoboxData = JSON.parse(kinoboxResponse);
           debugLog("Ответ Kinobox API:", kinoboxData);
+          
           // Проверяем наличие данных и ищем Turbo плеер
-          if (!kinoboxData.data || !Array.isArray(kinoboxData.data)) {
-            throw new Error("Некорректный формат ответа от Kinobox API");
-          }
-          // Ищем плеер с типом "Turbo" или похожим названием
-          const turboPlayer = kinoboxData.data.find((player) =>
-            player.type && player.type.toLowerCase().includes("turbo")
-          );
-          if (turboPlayer?.iframeUrl) {
-            return turboPlayer.iframeUrl;
-          } else {
-            // Если Turbo не найден, пробуем использовать первый доступный плеер
-            if (kinoboxData.data.length > 0 && kinoboxData.data[0].iframeUrl) {
-              debugLog("Turbo плеер не найден, используем первый доступный:", kinoboxData.data[0].type);
-              return kinoboxData.data[0].iframeUrl;
+          if (kinoboxData.data && Array.isArray(kinoboxData.data)) {
+            // Ищем плеер с типом "Turbo" или похожим названием
+            const turboPlayer = kinoboxData.data.find((player) =>
+              player.type && player.type.toLowerCase().includes("turbo")
+            );
+            
+            if (turboPlayer?.iframeUrl) {
+              setCachedData(cacheKey, turboPlayer.iframeUrl);
+              debugLog("Turbo плеер успешно загружен через Kinobox API");
+              return turboPlayer.iframeUrl;
             }
-            throw new Error("Turbo плеер не найден в Kinobox API");
           }
         } catch (error) {
-          debugLog(`Попытка ${i+1} загрузки Kinobox не удалась:`, error);
-          if (i === retries - 1) {
-            showNotification("Kinobox API недоступен для Turbo. Попробуйте позже.", "error");
-            throw error;
-          }
+          debugLog("Ошибка при загрузке Turbo через Kinobox API:", error);
         }
       }
     }
+    
+    // Если все методы не сработали, пробуем последний вариант
     try {
-      const iframeUrl = await tryFetchKinobox();
-      // Добавляем параметр эпизода, если он есть
-      if (episode && episode > 1) {
-        iframeUrl += (iframeUrl.includes('?') ? '&' : '?') + `episode=${episode}`;
-      }
-      setCachedData(cacheKey, iframeUrl);
-      debugLog("Turbo плеер успешно загружен");
-      return iframeUrl;
+      const fallbackUrl = `https://turbo.to/player/shikimori/${id}/${episode}`;
+      debugLog(`Пробуем запасной URL для Turbo: ${fallbackUrl}`);
+      setCachedData(cacheKey, fallbackUrl);
+      return fallbackUrl;
     } catch (error) {
-      localStorage.removeItem(cacheKey);
-      debugLog("Ошибка загрузки Turbo:", error);
-      showNotification("Ошибка загрузки Turbo: " + error.message, "error");
-      throw new Error("Ошибка загрузки Turbo: " + error.message);
+      debugLog("Ошибка при использовании запасного URL для Turbo:", error);
     }
+    
+    // Если ничего не помогло, выбрасываем ошибку
+    debugLog("Не удалось загрузить Turbo плеер");
+    showNotification("Не удалось загрузить Turbo плеер. Попробуйте другой плеер.", "error");
+    throw new Error("Не удалось загрузить Turbo плеер");
   }
+  
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ LUMEX
   async function loadLumexPlayer(id, episode) {
     debugLog(`Загрузка Lumex плеера для аниме ID: ${id}, серия: ${episode}`);
     const cacheKey = `lumex_${id}_${episode}`;
@@ -2513,6 +2318,8 @@ ${watchedInfo}`
       debugLog("Используем кешированный URL для Lumex");
       return iframeUrl;
     }
+    
+    // Пытаемся получить данные из Kodik API
     const kodikCacheKey = `kodik_${id}`;
     let kodikData = getCachedData(kodikCacheKey);
     if (!kodikData) {
@@ -2523,35 +2330,50 @@ ${watchedInfo}`
         debugLog("Получены данные от Kodik API для Lumex");
       } catch (error) {
         debugLog("Ошибка загрузки данных Kodik API для Lumex:", error);
-        showNotification("Ошибка загрузки данных Kodik API для Lumex.", "error");
-        throw new Error("Ошибка загрузки данных Kodik API");
+        // Не прерываем выполнение, а пробуем альтернативный метод
       }
     }
-    const results = kodikData.results;
-    if (!results?.length) {
-      debugLog("Нет результатов от Kodik API для Lumex");
-      showNotification("Нет результатов от Kodik API для Lumex.", "error");
-      throw new Error("Нет результатов от Kodik API");
+    
+    // Альтернативный метод: прямой запрос к Lumex
+    try {
+      const lumexUrl = `https://lumex.pro/embed/shikimori/${id}?episode=${episode}`;
+      debugLog(`Пробуем прямой URL для Lumex: ${lumexUrl}`);
+      
+      // Проверяем доступность URL
+      const response = await gmGetWithTimeout(lumexUrl, {
+        headers: {
+          Referer: "https://lumex.pro/",
+          Origin: "https://lumex.pro",
+        }
+      });
+      
+      if (response && response.length > 0) {
+        setCachedData(cacheKey, lumexUrl);
+        debugLog("Lumex плеер успешно загружен через прямой URL");
+        return lumexUrl;
+      }
+    } catch (error) {
+      debugLog("Ошибка при загрузке Lumex через прямой URL:", error);
     }
-    const { kinopoisk_id, worldart_id, shikimori_id } = results[0];
-    debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
-    // Пробуем разные варианты получения данных
-    let kinoboxUrl = null;
-    if (kinopoisk_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
-    } else if (worldart_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
-    } else if (shikimori_id) {
-      kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
-    }
-    if (!kinoboxUrl) {
-      debugLog("Не найден подходящий ID для запроса к Kinobox API");
-      showNotification("Не найден подходящий ID для Lumex.", "error");
-      throw new Error("Не найден подходящий ID");
-    }
-    debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
-    async function tryFetchKinoboxLumex(retries = 3) {
-      for (let i = 0; i < retries; i++) {
+    
+    // Если прямой метод не сработал, пробуем через Kinobox
+    if (kodikData && kodikData.results && kodikData.results.length > 0) {
+      const { kinopoisk_id, worldart_id, shikimori_id } = kodikData.results[0];
+      debugLog(`ID из Kodik API: kinopoisk_id=${kinopoisk_id}, worldart_id=${worldart_id}, shikimori_id=${shikimori_id}`);
+      
+      // Пробуем разные варианты получения данных
+      let kinoboxUrl = null;
+      if (kinopoisk_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?kinopoisk=${kinopoisk_id}`;
+      } else if (worldart_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?worldart=${worldart_id}`;
+      } else if (shikimori_id) {
+        kinoboxUrl = `https://api.kinobox.tv/api/players?shikimori=${shikimori_id}`;
+      }
+      
+      if (kinoboxUrl) {
+        debugLog(`URL для запроса к Kinobox API: ${kinoboxUrl}`);
+        
         try {
           const kinoboxResponse = await gmGetWithTimeout(kinoboxUrl, {
             headers: {
@@ -2562,53 +2384,46 @@ ${watchedInfo}`
           });
           const kinoboxData = JSON.parse(kinoboxResponse);
           debugLog("Ответ Kinobox API для Lumex:", kinoboxData);
+          
           // Проверяем наличие данных и ищем Lumex плеер
-          if (!kinoboxData.data || !Array.isArray(kinoboxData.data)) {
-            throw new Error("Некорректный формат ответа от Kinobox API");
-          }
-          // Ищем плеер с типом "Lumex" или похожим названием
-          const lumexPlayer = kinoboxData.data.find((player) =>
-            player.type && player.type.toLowerCase().includes("lumex")
-          );
-          if (lumexPlayer?.iframeUrl) {
-            let url = lumexPlayer.iframeUrl;
-            if (episode) {
-              url += (url.includes("?") ? "&" : "?") + "episode=" + episode;
-            }
-            return url;
-          } else {
-            // Если Lumex не найден, пробуем использовать первый доступный плеер
-            if (kinoboxData.data.length > 0 && kinoboxData.data[0].iframeUrl) {
-              debugLog("Lumex плеер не найден, используем первый доступный:", kinoboxData.data[0].type);
-              let url = kinoboxData.data[0].iframeUrl;
+          if (kinoboxData.data && Array.isArray(kinoboxData.data)) {
+            // Ищем плеер с типом "Lumex" или похожим названием
+            const lumexPlayer = kinoboxData.data.find((player) =>
+              player.type && player.type.toLowerCase().includes("lumex")
+            );
+            
+            if (lumexPlayer?.iframeUrl) {
+              let url = lumexPlayer.iframeUrl;
               if (episode) {
                 url += (url.includes("?") ? "&" : "?") + "episode=" + episode;
               }
+              setCachedData(cacheKey, url);
+              debugLog("Lumex плеер успешно загружен через Kinobox API");
               return url;
             }
-            throw new Error("Lumex плеер не найден в Kinobox API");
           }
         } catch (error) {
-          debugLog(`Попытка ${i+1} загрузки Kinobox для Lumex не удалась:`, error);
-          if (i === retries - 1) {
-            showNotification("Kinobox API недоступен для Lumex. Попробуйте позже.", "error");
-            throw error;
-          }
+          debugLog("Ошибка при загрузке Lumex через Kinobox API:", error);
         }
       }
     }
+    
+    // Если все методы не сработали, пробуем последний вариант
     try {
-      const iframeUrl = await tryFetchKinoboxLumex();
-      setCachedData(cacheKey, iframeUrl);
-      debugLog("Lumex плеер успешно загружен");
-      return iframeUrl;
+      const fallbackUrl = `https://lumex.pro/player/shikimori/${id}/${episode}`;
+      debugLog(`Пробуем запасной URL для Lumex: ${fallbackUrl}`);
+      setCachedData(cacheKey, fallbackUrl);
+      return fallbackUrl;
     } catch (error) {
-      localStorage.removeItem(cacheKey);
-      debugLog("Ошибка загрузки Lumex:", error);
-      showNotification("Ошибка загрузки Lumex: " + error.message, "error");
-      throw new Error("Ошибка загрузки Lumex: " + error.message);
+      debugLog("Ошибка при использовании запасного URL для Lumex:", error);
     }
+    
+    // Если ничего не помогло, выбрасываем ошибку
+    debugLog("Не удалось загрузить Lumex плеер");
+    showNotification("Не удалось загрузить Lumex плеер. Попробуйте другой плеер.", "error");
+    throw new Error("Не удалось загрузить Lumex плеер");
   }
+  
   function checkVideoCodecSupport() {
     const video = document.createElement("video");
     return (
@@ -2616,6 +2431,7 @@ ${watchedInfo}`
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
   }
+  
   function setupLazyLoading(container, callback) {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -2628,6 +2444,7 @@ ${watchedInfo}`
     );
     observer.observe(container);
   }
+  
   function setupDOMObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(() => {
@@ -2638,6 +2455,7 @@ ${watchedInfo}`
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
+  
   function watchURLChanges() {
     let lastPath = location.pathname;
     const checkUrlChange = () => {
@@ -2647,27 +2465,34 @@ ${watchedInfo}`
         insertPlayerContainer();
       }
     };
+    
     setInterval(checkUrlChange, 300);
+    
     const pushState = history.pushState;
     history.pushState = function () {
       pushState.apply(this, arguments);
       checkUrlChange();
     };
+    
     const replaceState = history.replaceState;
     history.replaceState = function () {
       replaceState.apply(this, arguments);
       checkUrlChange();
     };
+    
     window.addEventListener("popstate", checkUrlChange);
   }
+  
   window.manualInsertPlayer = function () {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   };
+  
   document.addEventListener("turbolinks:load", () => {
     document.querySelector(".kodik-container")?.remove();
     insertPlayerContainer();
   });
+  
   setupDOMObserver();
   watchURLChanges();
   insertPlayerContainer();
