@@ -1,6 +1,6 @@
 name: 🐥 Идея
 title: '[Идея] '
-labels: ["Добавить"] 
+labels: [] 
 description: Сообщить о идее
 
 body:
@@ -12,6 +12,7 @@ body:
       placeholder: Описание идеи
     validations:
       required: true
+
 
 
 
