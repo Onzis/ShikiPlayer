@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.48
+// @version      1.49
 // @description  видеоплеер для просмотра прямо на Shikimori (Turbo → Lumex → Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
@@ -21,7 +21,7 @@
   let observer = null;
   let currentPlayer = "turbo";
   let isInserting = false;
-  const KodikToken = "447d179e875efe44217f20d1ee2146be";
+  const KodikToken = "7f129085d2f372833fcc5e2116e4d0a4";
   const AllohaToken = "96b62ea8e72e7452b652e461ab8b89";
   
   // Объект для хранения настроек
@@ -1362,6 +1362,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.49</strong> - Обновлен токен для Кодик</li>
             <li><strong>v1.47</strong> - Добавлена новая кнопка для изменения статуса аниме</li>
             <li><strong>v1.46</strong> - Исправлены ошибки с режимом кинотеатра и прокрутки настроек</li>
             <li><strong>v1.44</strong> - Исправлена анимация загрузчика (круг теперь крутится)</li>
