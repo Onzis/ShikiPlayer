@@ -1984,9 +1984,8 @@
           });
         }
 
-        setupLazyLoading(playerContainer, () =>
-          autoPlayerChain(id, playerContainer, startEpisode)
-        );
+        // Загружаем плеер немедленно без ленивой загрузки
+        autoPlayerChain(id, playerContainer, startEpisode);
       })
       .catch((error) => {
         console.error("Ошибка при проверке доступности плееров:", error);
@@ -2321,18 +2320,6 @@
         "probably" ||
       video.canPlayType('video/webm; codecs="vp9, vorbis"') === "probably"
     );
-  }
-  function setupLazyLoading(container, callback) {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          callback();
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "50px" }
-    );
-    observer.observe(container);
   }
   function setupDOMObserver() {
     if (observer) observer.disconnect();
