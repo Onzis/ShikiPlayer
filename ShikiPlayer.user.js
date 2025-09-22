@@ -104,131 +104,176 @@
       isInserting = false;
     });
   }
+  
+  // НОВЫЕ КОМПАКТНЫЕ НЕОНОВЫЕ УВЕДОМЛЕНИЯ
   function showNotification(message, type = "info") {
     if (playerSettings.disableNotifications) return;
 
-    if (!document.getElementById("shikip-notif-style-modern")) {
+    // Удаляем старые стили уведомлений если существуют
+    const oldStyle = document.getElementById("shikip-notif-style-modern");
+    if (oldStyle) oldStyle.remove();
+
+    // Добавляем новые стили для неоновых уведомлений
+    if (!document.getElementById("shikip-notif-style-neon")) {
       const style = document.createElement("style");
-      style.id = "shikip-notif-style-modern";
+      style.id = "shikip-notif-style-neon";
       style.textContent = `
-        .shikip-notif-modern-container {
+        .shikip-notif-neon-container {
           position: fixed;
           left: 50%;
-          bottom: 32px;
+          bottom: 30px;
           transform: translateX(-50%);
           z-index: 99999;
           display: flex;
           flex-direction: column;
           align-items: center;
-          max-width: 96vw;
+          max-width: 90vw;
           pointer-events: none;
         }
-        .shikip-notif-modern {
-          background: rgba(255, 255, 255, 0.85);
+        .shikip-notif-neon {
+          background: rgba(0, 0, 0, 0.85);
           color: #ffffff;
-          padding: 18px 32px;
-          border-radius: 16px;
-          font-size: 1.08rem;
-          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          padding: 10px 18px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-family: 'Segoe UI', Arial, sans-serif;
+          box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
           opacity: 0;
-          margin-top: 8px;
-          margin-bottom: 2px;
+          margin: 4px 0;
           display: flex;
           align-items: center;
-          gap: 14px;
-          transition: opacity .5s, transform .5s;
+          gap: 10px;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           pointer-events: auto;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          transform: translateY(20px);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid transparent;
+          position: relative;
+          overflow: hidden;
         }
-        .shikip-notif-modern.show {
+        .shikip-notif-neon::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 8px;
+          padding: 1px;
+          background: linear-gradient(45deg, transparent, currentColor, transparent);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0;
+          z-index: -1;
+          transition: opacity 0.3s;
+        }
+        .shikip-notif-neon.show {
           opacity: 1;
-          transform: translateY(0);
+          transform: translateY(-5px);
         }
-        .shikip-notif-modern.success { border-color: rgb(0 255 86 / 40%); background: rgb(0 0 0 / 40%); }
-        .shikip-notif-modern.error   { border-color: rgb(255 23 0 / 40%); background: rgb(0 0 0 / 40%); }
-        .shikip-notif-modern.info    { border-color: rgb(0 64 255 / 40%); background: rgb(0 0 0 / 40%); }
-        .shikip-notif-modern.warning { border-color: rgb(255 210 0 / 40%); background: rgb(0 0 0 / 40%); }
-        .shikip-notif-modern .notif-icon {
-          font-size: 1.5rem;
+        .shikip-notif-neon.show::before {
+          opacity: 1;
+        }
+        .shikip-notif-neon.success { 
+          color: #00ff88; 
+          box-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        .shikip-notif-neon.error   { 
+          color: #ff3366; 
+          box-shadow: 0 0 10px rgba(255, 51, 102, 0.5), 0 0 20px rgba(255, 51, 102, 0.3);
+        }
+        .shikip-notif-neon.info    { 
+          color: #33ccff; 
+          box-shadow: 0 0 10px rgba(51, 204, 255, 0.5), 0 0 20px rgba(51, 204, 255, 0.3);
+        }
+        .shikip-notif-neon.warning { 
+          color: #ffcc00; 
+          box-shadow: 0 0 10px rgba(255, 204, 0, 0.5), 0 0 20px rgba(255, 204, 0, 0.3);
+        }
+        .shikip-notif-neon .notif-icon {
+          font-size: 16px;
           flex-shrink: 0;
-          animation: iconPulse 0.6s ease-in-out;
+          filter: drop-shadow(0 0 3px currentColor);
         }
-        .shikip-notif-modern .notif-close {
+        .shikip-notif-neon .notif-close {
           margin-left: auto;
           background: none;
           border: none;
-          color: #666;
-          font-size: 1.3rem;
+          color: inherit;
+          font-size: 16px;
           cursor: pointer;
-          opacity: .65;
+          opacity: 0.7;
           transition: all 0.2s;
         }
-        .shikip-notif-modern .notif-close:hover {
+        .shikip-notif-neon .notif-close:hover {
           opacity: 1;
           transform: rotate(90deg);
         }
-        @keyframes iconPulse {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); opacity: 1; }
-        }
         @media (max-width: 600px) {
-          .shikip-notif-modern {
-            padding: 12px 18px;
-            font-size: .97rem;
-            gap: 10px;
+          .shikip-notif-neon {
+            padding: 8px 14px;
+            font-size: 12px;
+            gap: 8px;
           }
-          .shikip-notif-modern-container {
-            max-width: 99vw;
-            bottom: 10px;
+          .shikip-notif-neon-container {
+            max-width: 95vw;
+            bottom: 15px;
           }
         }
       `;
       document.head.appendChild(style);
     }
-    let notifContainer = document.getElementById(
-      "shikip-notif-modern-container"
-    );
+    
+    let notifContainer = document.getElementById("shikip-notif-neon-container");
     if (!notifContainer) {
       notifContainer = document.createElement("div");
-      notifContainer.id = "shikip-notif-modern-container";
-      notifContainer.className = "shikip-notif-modern-container";
+      notifContainer.id = "shikip-notif-neon-container";
+      notifContainer.className = "shikip-notif-neon-container";
       document.body.appendChild(notifContainer);
     }
+    
+    // Очищаем предыдущие уведомления
     while (notifContainer.firstChild) {
       notifContainer.removeChild(notifContainer.firstChild);
     }
+    
     const icons = {
-      success: "✅",
-      error: "⛔",
-      info: "ℹ️",
-      warning: "⚠️",
+      success: "✓",
+      error: "✕",
+      info: "ℹ",
+      warning: "⚠",
     };
-    const notifType = ["success", "error", "info", "warning"].includes(type)
-      ? type
-      : "info";
+    
+    const notifType = ["success", "error", "info", "warning"].includes(type) ? type : "info";
     const notif = document.createElement("div");
-    notif.className = `shikip-notif-modern ${notifType}`;
+    notif.className = `shikip-notif-neon ${notifType}`;
     notif.innerHTML = `
       <span class="notif-icon">${icons[notifType]}</span>
       <span>${message}</span>
       <button class="notif-close" title="Закрыть">&times;</button>
     `;
+    
     notifContainer.appendChild(notif);
+    
+    // Анимация появления
     setTimeout(() => {
       notif.classList.add("show");
     }, 10);
+    
+    // Функция скрытия уведомления
     const hide = () => {
       notif.classList.remove("show");
-      setTimeout(() => notif.remove(), 500);
+      setTimeout(() => notif.remove(), 300);
     };
-    setTimeout(hide, 4500);
+    
+    // Автоматическое скрытие через 3 секунды
+    setTimeout(hide, 3000);
+    
+    // Закрытие по клику на крестик
     notif.querySelector(".notif-close").onclick = hide;
   }
+  
   // ИСПРАВЛЕНА ФУНКЦИЯ: Теперь использует порядок из настроек
   function playerSelectorHTML(current) {
     let optionsHTML = "";
