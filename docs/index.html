@@ -347,6 +347,11 @@
             color: var(--warning-color);
         }
 
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error-color);
+        }
+
         .player-description {
             color: var(--text-secondary);
             font-size: 0.9rem;
@@ -527,22 +532,20 @@
                     <div class="player-header">
                         <div class="player-logo">T</div>
                         <div class="player-name">Turbo</div>
-                        <div class="player-status status-active">Активен</div>
+                        <div class="player-status status-inactive">Неактивен</div>
                     </div>
                     <div class="player-description">
-                        Основной источник с высокой скоростью загрузки и хорошим качеством видео. Автоматически
-                        используется по умолчанию.
+                        Временно недоступен из-за технических проблем. Ведутся работы по восстановлению работоспособности.
                     </div>
                 </div>
                 <div class="player-card">
                     <div class="player-header">
                         <div class="player-logo">L</div>
                         <div class="player-name">Lumex</div>
-                        <div class="player-status status-active">Активен</div>
+                        <div class="player-status status-inactive">Неактивен</div>
                     </div>
                     <div class="player-description">
-                        Резервный источник с хорошей стабильностью и качеством. Автоматически переключается при
-                        недоступности Turbo.
+                        Временно недоступен. Ожидается восстановление работы в ближайшее время.
                     </div>
                 </div>
                 <div class="player-card">
@@ -552,8 +555,7 @@
                         <div class="player-status status-active">Активен</div>
                     </div>
                     <div class="player-description">
-                        Дополнительный источник с большим количеством контента. Используется как третий вариант при
-                        недоступности предыдущих.
+                        Основной источник с хорошей стабильностью и качеством. Автоматически используется по умолчанию.
                     </div>
                 </div>
                 <div class="player-card">
@@ -563,8 +565,7 @@
                         <div class="player-status status-active">Активен</div>
                     </div>
                     <div class="player-description">
-                        Финальный резервный источник с хорошим качеством и стабильностью. Гарантирует доступность
-                        контента.
+                        Резервный источник с хорошим качеством и стабильностью. Автоматически переключается при недоступности Alloha.
                     </div>
                 </div>
             </div>
@@ -702,8 +703,4 @@
     </script>
 </body>
 
-
 </html>
-
-
-
