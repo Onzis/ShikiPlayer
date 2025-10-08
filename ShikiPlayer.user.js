@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         ShikiPlayer
 // @namespace    https://github.com/Onzis/ShikiPlayer
-// @version      1.50
+// @version      1.51
 // @description  видеоплеер для просмотра прямо на Shikimori (Alloha → Kodik)
 // @author       Onzis
 // @match        https://shikimori.one/*
 // @homepageURL  https://github.com/Onzis/ShikiPlayer
 // @updateURL    https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL  https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
-// @connect      api.alloha.tv
+// @connect      api.apbugall.org
 // @connect      kodikapi.com
 // @connect      shikimori.one
 // @grant        GM.xmlHttpRequest
@@ -1429,6 +1429,7 @@
         </div>
         <div class="changelog-content">
           <ul>
+            <li><strong>v1.51</strong> - Alloha снова работает</li>
             <li><strong>v1.50</strong> - Временно убраны плеера Turbo&Lumex из за проблем с API</li>
             <li><strong>v1.49</strong> - Обновлен токен для Кодик</li>
             <li><strong>v1.47</strong> - Добавлена новая кнопка для изменения статуса аниме</li>
@@ -2306,8 +2307,8 @@
 
     const { kinopoisk_id, imdb_id } = results[0];
     const allohaUrl = kinopoisk_id
-      ? `https://api.alloha.tv?token=${AllohaToken}&kp=${kinopoisk_id}`
-      : `https://api.alloha.tv?token=${AllohaToken}&imdb=${imdb_id}`;
+      ? `https://api.apbugall.org?token=${AllohaToken}&kp=${kinopoisk_id}`
+      : `https://api.apbugall.org?token=${AllohaToken}&imdb=${imdb_id}`;
 
     if (!allohaUrl) {
       debugLog("Kinopoisk ID или IMDB ID не найдены для Alloha");
