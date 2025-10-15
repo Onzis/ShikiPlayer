@@ -856,7 +856,6 @@ class Shikiplayer {
           display: flex;
           justify-content: center;
           padding: 10px 0;
-          background: rgba(30, 30, 40, 0.9);
         }
         
         .sp-theater-btn {
@@ -1275,3 +1274,4 @@ async function startShikiplayer() {
 
 void startAllohaHelper();
 void startShikiplayer();
+
