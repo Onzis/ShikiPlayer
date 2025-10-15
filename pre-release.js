@@ -669,8 +669,8 @@ class Shikiplayer {
         }
         
         .sp-container {
-          background: linear-gradient(135deg, #2c3e50, #4a69bd);
-          border-radius: 12px;
+          background: rgba(30, 30, 40, 0.9);
+          border-radius: 12px 12px 0 0;
           box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
           overflow: hidden;
           transition: all 0.3s ease;
@@ -1273,3 +1273,4 @@ async function startShikiplayer() {
 
 void startAllohaHelper();
 void startShikiplayer();
+
