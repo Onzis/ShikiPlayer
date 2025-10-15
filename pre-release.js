@@ -905,6 +905,7 @@ class Shikiplayer {
           margin: 0;
           border-radius: 0;
           box-shadow: none;
+          transition: none !important;
         }
         
         .sp-wrapper.theater-mode .sp-header {
@@ -1274,5 +1275,3 @@ async function startShikiplayer() {
 
 void startAllohaHelper();
 void startShikiplayer();
-
-
