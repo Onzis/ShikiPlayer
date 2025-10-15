@@ -663,8 +663,12 @@ class Shikiplayer {
     this.element = document.createElement("div");
     this.element.innerHTML = `
       <style>
-        .sp-container {
+        .sp-wrapper {
+          position: relative;
           margin: 20px 0;
+        }
+        
+        .sp-container {
           background: linear-gradient(135deg, #2c3e50, #4a69bd);
           border-radius: 12px;
           box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
@@ -847,26 +851,119 @@ class Shikiplayer {
         .sp-status-indicator.loading {
           background: #f39c12;
         }
+        
+        .sp-theater-btn-container {
+          display: flex;
+          justify-content: center;
+          padding: 10px 0;
+        }
+        
+        .sp-theater-btn {
+          width: 40px;
+          height: 40px;
+          background: rgba(0, 0, 0, 0.7);
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        
+        .sp-theater-btn:hover {
+          background: rgba(0, 0, 0, 0.9);
+          transform: scale(1.1);
+        }
+        
+        .sp-theater-btn svg {
+          width: 20px;
+          height: 20px;
+          fill: #fff;
+        }
+        
+        .sp-wrapper.theater-mode {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100vw;
+          height: 100vh;
+          margin: 0;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          background: #000;
+        }
+        
+        .sp-wrapper.theater-mode .sp-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          margin: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+        
+        .sp-wrapper.theater-mode .sp-header {
+          display: none;
+        }
+        
+        .sp-wrapper.theater-mode .sp-viewer {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .sp-wrapper.theater-mode .sp-viewer iframe {
+          max-width: 100%;
+          max-height: 100%;
+        }
+        
+        .sp-wrapper.theater-mode .sp-theater-btn-container {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          padding: 0;
+          z-index: 10;
+        }
+        
+        .sp-wrapper.theater-mode .sp-theater-btn svg {
+          transform: rotate(180deg);
+        }
       </style>
-      <div class="sp-container">
-        <div class="sp-header">
-          <h3 class="sp-title">онлайн просмотр</h3>
-          <div class="sp-dropdown">
-            <div class="sp-dropdown-toggle">
-              <span class="sp-selected-player">Выберите плеер</span>
+      <div class="sp-wrapper">
+        <div class="sp-container">
+          <div class="sp-header">
+            <h3 class="sp-title">онлайн просмотр</h3>
+            <div class="sp-dropdown">
+              <div class="sp-dropdown-toggle">
+                <span class="sp-selected-player">Выберите плеер</span>
+              </div>
+              <div class="sp-dropdown-menu"></div>
             </div>
-            <div class="sp-dropdown-menu"></div>
+          </div>
+          <div class="sp-viewer">
+            <div class="sp-loading-overlay">
+              <div class="sp-loading-spinner"></div>
+              <span>Загрузка плеера...</span>
+            </div>
           </div>
         </div>
-        <div class="sp-viewer">
-          <div class="sp-loading-overlay">
-            <div class="sp-loading-spinner"></div>
-            <span>Загрузка плеера...</span>
-          </div>
+        <div class="sp-theater-btn-container">
+          <button class="sp-theater-btn" title="Режим кинотеатра">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+            </svg>
+          </button>
         </div>
       </div>
     `;
 
+    this._wrapper = this.element.querySelector(".sp-wrapper");
+    this._container = this.element.querySelector(".sp-container");
     this._dropdown = this.element.querySelector(".sp-dropdown");
     this._dropdownToggle = this.element.querySelector(".sp-dropdown-toggle");
     this._dropdownMenu = this.element.querySelector(".sp-dropdown-menu");
@@ -875,9 +972,11 @@ class Shikiplayer {
     );
     this._viewer = this.element.querySelector(".sp-viewer");
     this._loadingOverlay = this.element.querySelector(".sp-loading-overlay");
+    this._theaterBtn = this.element.querySelector(".sp-theater-btn");
 
     this._currentPlayer = null;
     this._playerInstances = new Map();
+    this._isTheaterMode = false;
 
     // Обработчики событий для выпадающего списка
     this._dropdownToggle.addEventListener("click", () => {
@@ -890,11 +989,46 @@ class Shikiplayer {
         this._dropdown.classList.remove("open");
       }
     });
+
+    // Обработчик для кнопки режима кинотеатра
+    this._theaterBtn.addEventListener("click", () => {
+      this.toggleTheaterMode();
+    });
+
+    // Обработчик для закрытия режима кинотеатра по клавише Esc
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this._isTheaterMode) {
+        this.toggleTheaterMode();
+      }
+    });
+  }
+
+  toggleTheaterMode() {
+    this._isTheaterMode = !this._isTheaterMode;
+
+    if (this._isTheaterMode) {
+      this._wrapper.classList.add("theater-mode");
+      // Сохраняем текущую позицию прокрутки
+      this._scrollPosition = window.pageYOffset;
+      // Блокируем прокрутку страницы
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${this._scrollPosition}px`;
+      document.body.style.width = "100%";
+    } else {
+      this._wrapper.classList.remove("theater-mode");
+      // Восстанавливаем прокрутку страницы
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, this._scrollPosition);
+    }
   }
 
   async start(abort) {
     // Очищаем предыдущий контейнер, если он существует
-    let existing = document.querySelector(".sp-container");
+    let existing = document.querySelector(".sp-wrapper");
     if (existing) existing.remove();
 
     let before = document.querySelector(".b-db_entry");
@@ -1055,6 +1189,15 @@ class Shikiplayer {
     }
     this._playerInstances.clear();
     this.element.remove();
+
+    // Восстанавливаем прокрутку страницы, если был режим кинотеатра
+    if (this._isTheaterMode) {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, this._scrollPosition);
+    }
   }
 }
 
