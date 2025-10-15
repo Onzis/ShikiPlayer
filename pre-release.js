@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.51.1
+// @version         1.51.2
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -674,7 +674,6 @@ class Shikiplayer {
         
         .sp-container:hover {
           box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-          transform: translateY(-2px);
         }
         
         .sp-header {
