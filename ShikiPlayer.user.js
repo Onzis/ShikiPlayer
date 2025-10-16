@@ -65,7 +65,7 @@ const darkThemeCSS = `
   --sp-radius-xl: 16px;
   --sp-spacing-xs: 4px;
   --sp-spacing-sm: 8px;
-  --sp-spacing-md: 16px;
+  --sp-spacing-md: 10px;
   --sp-spacing-lg: 24px;
   --sp-spacing-xl: 32px;
   
