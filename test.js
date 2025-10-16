@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.66
+// @version         1.67
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -1158,6 +1158,44 @@ class VeoveoFactory {
     return new VeoveoPlayer(veoveo.iframeUrl);
   }
 }
+// Vibix Player
+class VibixPlayer extends PlayerBase {
+  constructor(url) {
+    super();
+    this._url = url;
+    this.element = document.createElement("iframe");
+    this.element.allowFullscreen = true;
+    this.element.width = "100%";
+    this.element.style.aspectRatio = "16 / 9";
+    this.rebuildIFrameSrc();
+  }
+  name = "Vibix";
+  element;
+  rebuildIFrameSrc() {
+    let src = new URL(this._url);
+    this.element.src = src.toString();
+  }
+}
+// Vibix Factory
+class VibixFactory {
+  constructor(kodikApi, kinoboxApi) {
+    this._kodikApi = kodikApi;
+    this._kinoboxApi = kinoboxApi;
+  }
+  name = "Vibix";
+  async create(animeId, abort) {
+    let kodikResults = await this._kodikApi.search(animeId);
+    let kodikResult = kodikResults[0];
+    if (!kodikResult || !kodikResult.kinopoisk_id) return null;
+    let kinoboxResult = await this._kinoboxApi.players(
+      kodikResult.kinopoisk_id,
+      abort
+    );
+    let vibix = kinoboxResult.data.find((p) => p.type === "Vibix");
+    if (!vibix || !vibix.iframeUrl) return null;
+    return new VibixPlayer(vibix.iframeUrl);
+  }
+}
 // API для Kodik
 class KodikApi {
   constructor(http, token) {
@@ -1199,7 +1237,7 @@ class KodikApi {
     return data.results;
   }
 }
-// API для Kinobox (используется для Turbo, Lumex, Alloha и теперь Veoveo)
+// API для Kinobox (используется для Turbo, Lumex, Alloha, Veoveo и теперь Vibix)
 class KinoboxApi {
   constructor(http) {
     this._http = http;
@@ -1706,7 +1744,8 @@ async function startShikiplayer() {
     new AllohaFactory(kodikApi, kinoboxApi),
     new TurboFactory(kodikApi, kinoboxApi),
     new LumexFactory(kodikApi, kinoboxApi),
-    new VeoveoFactory(kodikApi, kinoboxApi), // Добавлен новый плеер Veoveo
+    new VeoveoFactory(kodikApi, kinoboxApi),
+    new VibixFactory(kodikApi, kinoboxApi), // Добавлен новый плеер Vibix
     new CollapsFactory(kodikApi, collapsApi),
   ];
   let shikiplayer = null;
