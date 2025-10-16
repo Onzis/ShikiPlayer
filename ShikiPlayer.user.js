@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.60
+// @version         1.63
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -310,6 +310,7 @@ const darkThemeCSS = `
   color: var(--sp-text-primary) !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
+  position: relative !important;
 }
 
 .sp-theater-btn:hover {
@@ -342,6 +343,7 @@ const darkThemeCSS = `
   color: var(--sp-text-primary) !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
+  position: relative !important;
 }
 
 .sp-episode-btn:hover {
@@ -358,6 +360,22 @@ const darkThemeCSS = `
   width: 24px !important;
   height: 24px !important;
   flex-shrink: 0 !important;
+}
+
+/* Счетчик просмотренных серий */
+.sp-episode-count {
+  position: absolute !important;
+  bottom: -5px !important;
+  right: -5px !important;
+  background: var(--sp-accent) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  padding: 2px 4px !important;
+  border-radius: 10px !important;
+  min-width: 28px !important;
+  text-align: center !important;
+  line-height: 12px !important;
 }
 
 /* Кнопка закрытия в режиме кинотеатра */
@@ -416,6 +434,42 @@ const darkThemeCSS = `
 
 .sp-wrapper.theater-mode .sp-theater-close {
   display: flex !important;
+}
+
+/* Стили для кастомных подсказок */
+.sp-tooltip {
+  position: absolute !important;
+  background: var(--sp-bg-secondary) !important;
+  color: var(--sp-text-primary) !important;
+  padding: var(--sp-spacing-xs) var(--sp-spacing-sm) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  z-index: 10000 !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transform: translateY(-5px) !important;
+  transition: all var(--sp-transition-fast) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid var(--sp-border-color) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.sp-tooltip.visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.sp-tooltip::before {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  border-width: 5px !important;
+  border-style: solid !important;
+  border-color: transparent transparent var(--sp-bg-secondary) transparent !important;
 }
 
 /* Скроллбар */
@@ -521,6 +575,113 @@ function injectDarkTheme() {
 
 injectDarkTheme();
 // --- END OF CSS INJECTION ---
+
+// Класс для создания кастомных подсказок
+class Tooltip {
+  constructor() {
+    this.tooltip = null;
+    this.targetElement = null;
+    this.showTimeout = null;
+    this.hideTimeout = null;
+    this.init();
+  }
+
+  init() {
+    // Создаем элемент подсказки
+    this.tooltip = document.createElement('div');
+    this.tooltip.className = 'sp-tooltip';
+    document.body.appendChild(this.tooltip);
+  }
+
+  // Добавление подсказки к элементу
+  attach(element, text) {
+    // Удаляем стандартный атрибут title, чтобы избежать дублирования
+    const title = element.getAttribute('title');
+    if (title) {
+      element.setAttribute('data-tooltip-text', title);
+      element.removeAttribute('title');
+    } else if (text) {
+      element.setAttribute('data-tooltip-text', text);
+    }
+
+    // Добавляем обработчики событий
+    element.addEventListener('mouseenter', this.show.bind(this));
+    element.addEventListener('mouseleave', this.hide.bind(this));
+    element.addEventListener('click', this.hide.bind(this));
+  }
+
+  // Показ подсказки
+  show(event) {
+    const element = event.currentTarget;
+    const text = element.getAttribute('data-tooltip-text');
+    if (!text) return;
+
+    // Отменяем скрытие, если оно было запланировано
+    if (this.hideTimeout) {
+      clearTimeout(this.hideTimeout);
+      this.hideTimeout = null;
+    }
+
+    // Запланируем показ с минимальной задержкой
+    this.showTimeout = setTimeout(() => {
+      this.targetElement = element;
+      this.tooltip.textContent = text;
+      
+      // Позиционирование подсказки
+      const rect = element.getBoundingClientRect();
+      const tooltipRect = this.tooltip.getBoundingClientRect();
+      
+      // Показываем подсказку снизу от элемента
+      let top = rect.bottom + 10;
+      let left = rect.left + (rect.width - tooltipRect.width) / 2;
+      
+      // Проверяем, не выходит ли подсказка за пределы экрана снизу
+      if (top + tooltipRect.height > window.innerHeight) {
+        // Если не помещается снизу, показываем сверху
+        top = rect.top - tooltipRect.height - 10;
+      }
+      
+      // Проверяем, не выходит ли подсказка за пределы экрана по горизонтали
+      if (left < 0) {
+        left = 5;
+      } else if (left + tooltipRect.width > window.innerWidth) {
+        left = window.innerWidth - tooltipRect.width - 5;
+      }
+      
+      this.tooltip.style.top = `${top + window.scrollY}px`;
+      this.tooltip.style.left = `${left + window.scrollX}px`;
+      
+      // Показываем подсказку с анимацией
+      this.tooltip.classList.add('visible');
+    }, 100); // Уменьшенная задержка перед показом
+  }
+
+  // Скрытие подсказки
+  hide() {
+    // Отменяем показ, если он был запланирован
+    if (this.showTimeout) {
+      clearTimeout(this.showTimeout);
+      this.showTimeout = null;
+    }
+
+    // Немедленно скрываем подсказку
+    this.tooltip.classList.remove('visible');
+    this.targetElement = null;
+  }
+
+  // Уничтожение подсказки
+  destroy() {
+    if (this.showTimeout) {
+      clearTimeout(this.showTimeout);
+    }
+    if (this.hideTimeout) {
+      clearTimeout(this.hideTimeout);
+    }
+    if (this.tooltip && this.tooltip.parentNode) {
+      this.tooltip.parentNode.removeChild(this.tooltip);
+    }
+  }
+}
 
 // Базовый класс для ошибок
 class ErrorBase extends Error {
@@ -1161,7 +1322,7 @@ class Shikiplayer {
   </button>
 </div>
 <div class="sp-button-container">
-  <button class="sp-theater-btn" title="Режим кинотеатра">
+  <button class="sp-theater-btn" title="Театральный режим">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
     </svg>
@@ -1171,6 +1332,7 @@ class Shikiplayer {
       <line x1="12" y1="5" x2="12" y2="19"></line>
       <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
+    <span class="sp-episode-count">0/0</span>
   </button>
 </div>
         `;
@@ -1190,6 +1352,10 @@ class Shikiplayer {
     this._currentPlayer = null;
     this._playerInstances = new Map();
     this._isTheaterMode = false;
+    
+    // Инициализация системы подсказок
+    this._tooltip = new Tooltip();
+    
     // Обработчики событий для выпадающего списка
     this._dropdownToggle.addEventListener("click", () => {
       this._dropdown.classList.toggle("open");
@@ -1219,6 +1385,7 @@ class Shikiplayer {
       }
     });
   }
+  
   toggleTheaterMode() {
     this._isTheaterMode = !this._isTheaterMode;
     if (this._isTheaterMode) {
@@ -1240,9 +1407,18 @@ class Shikiplayer {
       window.scrollTo(0, this._scrollPosition);
     }
   }
+  
   incrementEpisode() {
-    // Находим кнопку увеличения эпизода на странице Shikimori
-    const incrementButton = document.querySelector(".item-add.increment");
+    // ИСПРАВЛЕНИЕ: Улучшенный поиск кнопки увеличения эпизода
+    // Пробуем несколько возможных селекторов для кнопки
+    let incrementButton = document.querySelector(".item-add.increment");
+    if (!incrementButton) {
+      incrementButton = document.querySelector(".b-user_rate .increment");
+    }
+    if (!incrementButton) {
+      incrementButton = document.querySelector(".b-add_to_list .increment");
+    }
+    
     if (incrementButton) {
       // Кликаем по ней
       incrementButton.click();
@@ -1252,6 +1428,17 @@ class Shikiplayer {
       setTimeout(() => {
         this._episodeBtn.style.background = "";
       }, 500);
+      
+      // ИСПРАВЛЕНИЕ: Увеличиваем задержку и добавляем несколько попыток обновления счетчика
+      // Обновляем счетчик серий с увеличенной задержкой
+      setTimeout(() => {
+        this.updateEpisodeCount();
+      }, 1000);
+      
+      // Вторая попытка обновления счетчика
+      setTimeout(() => {
+        this.updateEpisodeCount();
+      }, 2000);
     } else {
       // Если кнопка не найдена, показываем ошибку
       this._episodeBtn.style.background = "var(--sp-error)";
@@ -1260,6 +1447,46 @@ class Shikiplayer {
       }, 500);
     }
   }
+
+  updateEpisodeCount() {
+    // ИСПРАВЛЕНИЕ: Улучшенный поиск элемента с количеством просмотренных серий
+    // Пробуем несколько возможных селекторов
+    let rateNumber = document.querySelector(".rate-number");
+    if (!rateNumber) {
+      rateNumber = document.querySelector(".b-user_rate .rate-number");
+    }
+    if (!rateNumber) {
+      rateNumber = document.querySelector(".b-add_to_list .rate-number");
+    }
+    
+    if (!rateNumber) {
+      console.error("Не удалось найти элемент с количеством просмотренных серий");
+      return;
+    }
+    
+    // Получаем текст из элемента
+    const rateText = rateNumber.textContent;
+    
+    // Находим элемент счетчика в нашей кнопке
+    const episodeCount = this._episodeBtn.querySelector(".sp-episode-count");
+    if (!episodeCount) return;
+    
+    // ИСПРАВЛЕНИЕ: Добавляем анимацию при обновлении счетчика
+    // Сохраняем старое значение для сравнения
+    const oldValue = episodeCount.textContent;
+    
+    // Обновляем текст счетчика
+    episodeCount.textContent = rateText;
+    
+    // Если значение изменилось, добавляем анимацию
+    if (oldValue !== rateText) {
+      episodeCount.style.transform = "scale(1.2)";
+      setTimeout(() => {
+        episodeCount.style.transform = "scale(1)";
+      }, 300);
+    }
+  }
+  
   async start(abort) {
     // Очищаем предыдущий контейнер, если он существует
     let existing = document.querySelector(".sp-outer-wrapper");
@@ -1272,6 +1499,15 @@ class Shikiplayer {
     if (!entryText) return;
     let entry = JSON.parse(entryText);
     if (!entry || typeof entry.id !== "number") return;
+    
+    // Добавляем подсказки только к кнопкам
+    this._tooltip.attach(this._theaterBtn, "Театральный режим");
+    this._tooltip.attach(this._theaterCloseBtn, "Закрыть режим кинотеатра (Esc)");
+    this._tooltip.attach(this._episodeBtn, "Отметить серию как просмотренную");
+    
+    // Обновляем счетчик серий
+    this.updateEpisodeCount();
+    
     // Создаем элементы для всех плееров в выпадающем списке
     for (let factory of this._playerFactories) {
       let item = document.createElement("div");
@@ -1380,6 +1616,7 @@ class Shikiplayer {
         });
     }
   }
+  
   switchPlayer(playerName, player) {
     // Показываем индикатор загрузки
     this._loadingOverlay.style.display = "flex";
@@ -1402,12 +1639,19 @@ class Shikiplayer {
       this._loadingOverlay.style.display = "none";
     }, 500);
   }
+  
   dispose() {
     if (this._currentPlayer) {
       this._currentPlayer.dispose();
       this._currentPlayer = null;
     }
     this._playerInstances.clear();
+    
+    // Уничтожаем систему подсказок
+    if (this._tooltip) {
+      this._tooltip.destroy();
+    }
+    
     this.element.remove();
     // Восстанавливаем прокрутку страницы, если был режим кинотеатра
     if (this._isTheaterMode) {
