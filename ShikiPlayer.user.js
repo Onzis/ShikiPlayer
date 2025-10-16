@@ -1696,7 +1696,7 @@ async function startAllohaHelper() {
 async function startShikiplayer() {
   if (location.hostname !== "shikimori.one") return;
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
-  const kodikUid = "neBQ6J";
+  const kodikUid = "";
   const allohaToken = "96b62ea8e72e7452b652e461ab8b89";
   const collapsToken = "4c250f7ac0a8c8a658c789186b9a58a5";
   let http = new GMHttp();
