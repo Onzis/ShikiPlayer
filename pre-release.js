@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.51.6
+// @version         1.51.7
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -214,8 +214,8 @@ const darkThemeCSS = `
 }
 
 .sp-dropdown-item.active {
-  background: var(--sp-accent) !important;
-  color: var(--sp-text-inverse) !important;
+   background: #3d3d3d !important;
+   color: #ffffff !important;
 }
 
 .sp-dropdown-item.loading {
@@ -346,7 +346,7 @@ const darkThemeCSS = `
 
 .sp-episode-btn:hover {
   background: var(--sp-bg-hover) !important;
-  border-color: var(--sp-success) !important;
+  border-color: var(--sp-accent) !important;
   transform: translateY(-2px) !important;
 }
 
