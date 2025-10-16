@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.62
+// @version         1.63
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -369,7 +369,7 @@ const darkThemeCSS = `
   right: -5px !important;
   background: var(--sp-accent) !important;
   color: #ffffff !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: bold !important;
   padding: 2px 4px !important;
   border-radius: 10px !important;
@@ -395,7 +395,6 @@ const darkThemeCSS = `
   z-index: 10000 !important;
   transition: all var(--sp-transition-fast) !important;
   backdrop-filter: blur(4px) !important;
-  position: relative !important;
 }
 
 .sp-theater-close:hover {
