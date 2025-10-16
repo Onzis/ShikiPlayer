@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.51.5
+// @version         1.51.6
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -82,7 +82,7 @@ const darkThemeCSS = `
 
 /* Контейнер для кнопки с фоном как у плеера */
 .sp-button-container {
-  background: var(--sp-bg-primary) !important;
+  background: linear-gradient(135deg, #2b2a39eb 0%, #2b2a39eb 100%) !important;
   border: 1px solid var(--sp-border-color) !important;
   border-top: none !important;
   border-radius: 0 0 var(--sp-radius-lg) var(--sp-radius-lg) !important;
@@ -113,7 +113,7 @@ const darkThemeCSS = `
 
 /* Заголовок плеера */
 .sp-header {
-  background: linear-gradient(135deg, var(--sp-bg-secondary) 0%, var(--sp-bg-tertiary) 100%) !important;
+  background: linear-gradient(135deg, #2b2a39eb 0%, #2b2a39eb 100%) !important;
   padding: var(--sp-spacing-md) var(--sp-spacing-lg) !important;
   border-bottom: 1px solid var(--sp-border-color) !important;
   display: flex !important;
