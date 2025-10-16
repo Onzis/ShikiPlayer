@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.65
+// @version         1.64
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -12,6 +12,7 @@
 // @connect         shikimori.me
 // @connect         kodikapi.com
 // @connect         apicollaps.cc
+// @connect         api.apbugall.org
 // @connect         api.kinobox.tv
 // @match           *://shikimori.one/*
 // @match           *://beggins-as.pljjalgo.online/*
@@ -588,32 +589,32 @@ class Tooltip {
 
   init() {
     // Создаем элемент подсказки
-    this.tooltip = document.createElement("div");
-    this.tooltip.className = "sp-tooltip";
+    this.tooltip = document.createElement('div');
+    this.tooltip.className = 'sp-tooltip';
     document.body.appendChild(this.tooltip);
   }
 
   // Добавление подсказки к элементу
   attach(element, text) {
     // Удаляем стандартный атрибут title, чтобы избежать дублирования
-    const title = element.getAttribute("title");
+    const title = element.getAttribute('title');
     if (title) {
-      element.setAttribute("data-tooltip-text", title);
-      element.removeAttribute("title");
+      element.setAttribute('data-tooltip-text', title);
+      element.removeAttribute('title');
     } else if (text) {
-      element.setAttribute("data-tooltip-text", text);
+      element.setAttribute('data-tooltip-text', text);
     }
 
     // Добавляем обработчики событий
-    element.addEventListener("mouseenter", this.show.bind(this));
-    element.addEventListener("mouseleave", this.hide.bind(this));
-    element.addEventListener("click", this.hide.bind(this));
+    element.addEventListener('mouseenter', this.show.bind(this));
+    element.addEventListener('mouseleave', this.hide.bind(this));
+    element.addEventListener('click', this.hide.bind(this));
   }
 
   // Показ подсказки
   show(event) {
     const element = event.currentTarget;
-    const text = element.getAttribute("data-tooltip-text");
+    const text = element.getAttribute('data-tooltip-text');
     if (!text) return;
 
     // Отменяем скрытие, если оно было запланировано
@@ -626,33 +627,33 @@ class Tooltip {
     this.showTimeout = setTimeout(() => {
       this.targetElement = element;
       this.tooltip.textContent = text;
-
+      
       // Позиционирование подсказки
       const rect = element.getBoundingClientRect();
       const tooltipRect = this.tooltip.getBoundingClientRect();
-
+      
       // Показываем подсказку снизу от элемента
       let top = rect.bottom + 10;
       let left = rect.left + (rect.width - tooltipRect.width) / 2;
-
+      
       // Проверяем, не выходит ли подсказка за пределы экрана снизу
       if (top + tooltipRect.height > window.innerHeight) {
         // Если не помещается снизу, показываем сверху
         top = rect.top - tooltipRect.height - 10;
       }
-
+      
       // Проверяем, не выходит ли подсказка за пределы экрана по горизонтали
       if (left < 0) {
         left = 5;
       } else if (left + tooltipRect.width > window.innerWidth) {
         left = window.innerWidth - tooltipRect.width - 5;
       }
-
+      
       this.tooltip.style.top = `${top + window.scrollY}px`;
       this.tooltip.style.left = `${left + window.scrollX}px`;
-
+      
       // Показываем подсказку с анимацией
-      this.tooltip.classList.add("visible");
+      this.tooltip.classList.add('visible');
     }, 100); // Уменьшенная задержка перед показом
   }
 
@@ -665,7 +666,7 @@ class Tooltip {
     }
 
     // Немедленно скрываем подсказку
-    this.tooltip.classList.remove("visible");
+    this.tooltip.classList.remove('visible');
     this.targetElement = null;
   }
 
@@ -950,33 +951,37 @@ class AllohaPlayer extends PlayerBase {
     removeEventListener("message", this.onMessage);
   }
 }
-// Alloha Factory - ИЗМЕНЕНО: Используем Kinobox API вместо Alloha API
+// Alloha Factory
 class AllohaFactory {
-  constructor(kodikApi, kinoboxApi) {
+  constructor(kodikApi, allohaApi) {
     this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
+    this._allohaApi = allohaApi;
   }
   name = "Alloha";
   async create(animeId, abort) {
     let kodikResults = await this._kodikApi.search(animeId);
     let kodikResult = kodikResults[0];
-    if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-
-    // Используем Kinobox API для получения плеера Alloha
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-
-    // Ищем плеер Alloha в результатах
-    let alloha = kinoboxResult.data.find((p) => p.type === "Alloha");
-    if (!alloha || !alloha.iframeUrl) return null;
-
+    if (!kodikResult) return null;
+    let kinopoiskId = kodikResult.kinopoisk_id;
+    let imdbId = kodikResult.imdb_id;
+    let allohaResult = null;
+    if (kinopoiskId)
+      allohaResult = await this._allohaApi.index(kinopoiskId, undefined, abort);
+    if (!allohaResult && imdbId)
+      allohaResult = await this._allohaApi.index(undefined, imdbId, abort);
+    if (
+      !allohaResult ||
+      allohaResult.status !== "success" ||
+      !allohaResult.data?.iframe
+    ) {
+      console.error("Alloha: Invalid API response", allohaResult);
+      return null;
+    }
     let season = kodikResult.last_season || 1;
-    // Устанавливаем значение по умолчанию для последнего эпизода
-    let lastEpisode = 12; // Значение по умолчанию, так как Kinobox API не предоставляет эту информацию
-
-    return new AllohaPlayer(alloha.iframeUrl, season, lastEpisode);
+    let lastEpisode = allohaResult.data.seasons
+      ? Object.keys(allohaResult.data.seasons[season]?.episodes || {}).length
+      : 1;
+    return new AllohaPlayer(allohaResult.data.iframe, season, lastEpisode);
   }
 }
 // Collaps Player
@@ -1161,47 +1166,44 @@ class KodikApi {
     return data.results;
   }
 }
-// API для Kinobox (используется для Turbo, Lumex и теперь Alloha)
-class KinoboxApi {
-  constructor(http) {
+// API для Alloha
+class AllohaApi {
+  constructor(http, token) {
     this._http = http;
+    this._token = token;
   }
-  _sessionId = Math.trunc(Math.random() * 100);
-  async players(kinopoisk, abort) {
-    let url = new URL("https://api.kinobox.tv/api/players");
-    url.searchParams.set("kinopoisk", kinopoisk + "");
-    url.searchParams.set("ts", this.getTs());
+  async index(kinopoiskId, imdbId, abort) {
+    let url = new URL("https://api.apbugall.org");
+    url.searchParams.set("token", this._token);
+    if (kinopoiskId) url.searchParams.set("kp", kinopoiskId);
+    if (imdbId) url.searchParams.set("imdb", imdbId);
     let response = await this._http.fetch(url, {
-      headers: {
-        Referer: "https://kinohost.web.app/",
-        Origin: "https://kinohost.web.app",
-        "Sec-Fetch-Site": "cross-site",
-      },
       signal: abort,
       timeout: 5000,
     });
     if (!response.ok) throw new ResponseError(response);
     let text = await response.text();
-    return Json.parse(
+    let data = Json.parse(
       text,
       (v) =>
         typeof v === "object" &&
         v !== null &&
-        Array.isArray(v.data) &&
-        v.data.every(
-          (e) =>
-            typeof e === "object" &&
-            e !== null &&
-            typeof e.type === "string" &&
-            (e.iframeUrl === null || typeof e.iframeUrl === "string")
-        )
+        typeof v.status === "string" &&
+        typeof v.data === "object" &&
+        v.data !== null &&
+        typeof v.data.iframe === "string" &&
+        (typeof v.data.seasons === "undefined" ||
+          (typeof v.data.seasons === "object" &&
+            v.data.seasons !== null &&
+            Object.values(v.data.seasons).every(
+              (s) =>
+                typeof s === "object" &&
+                s !== null &&
+                typeof s.episodes === "object" &&
+                s.episodes !== null
+            )))
     );
-  }
-  getTs() {
-    let s = Math.ceil(Date.now() / 1e3) % 1e5;
-    let i = s % 100;
-    let r = i - (i % 3);
-    return s - i + r + "." + this._sessionId;
+    return data;
   }
 }
 // API для Collaps
@@ -1243,6 +1245,49 @@ class CollapsApi {
         )
     );
     return data.results;
+  }
+}
+// API для Kinobox (используется для Turbo и Lumex)
+class KinoboxApi {
+  constructor(http) {
+    this._http = http;
+  }
+  _sessionId = Math.trunc(Math.random() * 100);
+  async players(kinopoisk, abort) {
+    let url = new URL("https://api.kinobox.tv/api/players");
+    url.searchParams.set("kinopoisk", kinopoisk + "");
+    url.searchParams.set("ts", this.getTs());
+    let response = await this._http.fetch(url, {
+      headers: {
+        Referer: "https://kinohost.web.app/",
+        Origin: "https://kinohost.web.app",
+        "Sec-Fetch-Site": "cross-site",
+      },
+      signal: abort,
+      timeout: 5000,
+    });
+    if (!response.ok) throw new ResponseError(response);
+    let text = await response.text();
+    return Json.parse(
+      text,
+      (v) =>
+        typeof v === "object" &&
+        v !== null &&
+        Array.isArray(v.data) &&
+        v.data.every(
+          (e) =>
+            typeof e === "object" &&
+            e !== null &&
+            typeof e.type === "string" &&
+            (e.iframeUrl === null || typeof e.iframeUrl === "string")
+        )
+    );
+  }
+  getTs() {
+    let s = Math.ceil(Date.now() / 1e3) % 1e5;
+    let i = s % 100;
+    let r = i - (i % 3);
+    return s - i + r + "." + this._sessionId;
   }
 }
 // Основной класс Shikiplayer
@@ -1308,10 +1353,10 @@ class Shikiplayer {
     this._currentPlayer = null;
     this._playerInstances = new Map();
     this._isTheaterMode = false;
-
+    
     // Инициализация системы подсказок
     this._tooltip = new Tooltip();
-
+    
     // Обработчики событий для выпадающего списка
     this._dropdownToggle.addEventListener("click", () => {
       this._dropdown.classList.toggle("open");
@@ -1341,7 +1386,7 @@ class Shikiplayer {
       }
     });
   }
-
+  
   toggleTheaterMode() {
     this._isTheaterMode = !this._isTheaterMode;
     if (this._isTheaterMode) {
@@ -1363,7 +1408,7 @@ class Shikiplayer {
       window.scrollTo(0, this._scrollPosition);
     }
   }
-
+  
   incrementEpisode() {
     // ИСПРАВЛЕНИЕ: Улучшенный поиск кнопки увеличения эпизода
     // Пробуем несколько возможных селекторов для кнопки
@@ -1374,7 +1419,7 @@ class Shikiplayer {
     if (!incrementButton) {
       incrementButton = document.querySelector(".b-add_to_list .increment");
     }
-
+    
     if (incrementButton) {
       // Кликаем по ней
       incrementButton.click();
@@ -1384,13 +1429,13 @@ class Shikiplayer {
       setTimeout(() => {
         this._episodeBtn.style.background = "";
       }, 500);
-
+      
       // ИСПРАВЛЕНИЕ: Увеличиваем задержку и добавляем несколько попыток обновления счетчика
       // Обновляем счетчик серий с увеличенной задержкой
       setTimeout(() => {
         this.updateEpisodeCount();
       }, 1000);
-
+      
       // Вторая попытка обновления счетчика
       setTimeout(() => {
         this.updateEpisodeCount();
@@ -1414,28 +1459,26 @@ class Shikiplayer {
     if (!rateNumber) {
       rateNumber = document.querySelector(".b-add_to_list .rate-number");
     }
-
+    
     if (!rateNumber) {
-      console.error(
-        "Не удалось найти элемент с количеством просмотренных серий"
-      );
+      console.error("Не удалось найти элемент с количеством просмотренных серий");
       return;
     }
-
+    
     // Получаем текст из элемента
     const rateText = rateNumber.textContent;
-
+    
     // Находим элемент счетчика в нашей кнопке
     const episodeCount = this._episodeBtn.querySelector(".sp-episode-count");
     if (!episodeCount) return;
-
+    
     // ИСПРАВЛЕНИЕ: Добавляем анимацию при обновлении счетчика
     // Сохраняем старое значение для сравнения
     const oldValue = episodeCount.textContent;
-
+    
     // Обновляем текст счетчика
     episodeCount.textContent = rateText;
-
+    
     // Если значение изменилось, добавляем анимацию
     if (oldValue !== rateText) {
       episodeCount.style.transform = "scale(1.2)";
@@ -1444,7 +1487,7 @@ class Shikiplayer {
       }, 300);
     }
   }
-
+  
   async start(abort) {
     // Очищаем предыдущий контейнер, если он существует
     let existing = document.querySelector(".sp-outer-wrapper");
@@ -1457,18 +1500,15 @@ class Shikiplayer {
     if (!entryText) return;
     let entry = JSON.parse(entryText);
     if (!entry || typeof entry.id !== "number") return;
-
+    
     // Добавляем подсказки только к кнопкам
     this._tooltip.attach(this._theaterBtn, "Театральный режим");
-    this._tooltip.attach(
-      this._theaterCloseBtn,
-      "Закрыть режим кинотеатра (Esc)"
-    );
+    this._tooltip.attach(this._theaterCloseBtn, "Закрыть режим кинотеатра (Esc)");
     this._tooltip.attach(this._episodeBtn, "Отметить серию как просмотренную");
-
+    
     // Обновляем счетчик серий
     this.updateEpisodeCount();
-
+    
     // Создаем элементы для всех плееров в выпадающем списке
     for (let factory of this._playerFactories) {
       let item = document.createElement("div");
@@ -1577,7 +1617,7 @@ class Shikiplayer {
         });
     }
   }
-
+  
   switchPlayer(playerName, player) {
     // Показываем индикатор загрузки
     this._loadingOverlay.style.display = "flex";
@@ -1600,19 +1640,19 @@ class Shikiplayer {
       this._loadingOverlay.style.display = "none";
     }, 500);
   }
-
+  
   dispose() {
     if (this._currentPlayer) {
       this._currentPlayer.dispose();
       this._currentPlayer = null;
     }
     this._playerInstances.clear();
-
+    
     // Уничтожаем систему подсказок
     if (this._tooltip) {
       this._tooltip.destroy();
     }
-
+    
     this.element.remove();
     // Восстанавливаем прокрутку страницы, если был режим кинотеатра
     if (this._isTheaterMode) {
@@ -1657,15 +1697,16 @@ async function startShikiplayer() {
   if (location.hostname !== "shikimori.one") return;
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
   const kodikUid = "";
+  const allohaToken = "96b62ea8e72e7452b652e461ab8b89";
   const collapsToken = "4c250f7ac0a8c8a658c789186b9a58a5";
   let http = new GMHttp();
   let kodikApi = new KodikApi(http, kodikToken);
-  let kinoboxApi = new KinoboxApi(http);
+  let allohaApi = new AllohaApi(http, allohaToken);
   let collapsApi = new CollapsApi(http, collapsToken);
+  let kinoboxApi = new KinoboxApi(http);
   let factories = [
     new KodikFactory(kodikUid, kodikApi),
-    // ИЗМЕНЕНО: AllohaFactory теперь использует Kinobox API вместо Alloha API
-    new AllohaFactory(kodikApi, kinoboxApi),
+    new AllohaFactory(kodikApi, allohaApi),
     new TurboFactory(kodikApi, kinoboxApi),
     new LumexFactory(kodikApi, kinoboxApi),
     new CollapsFactory(kodikApi, collapsApi),
