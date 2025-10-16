@@ -4,10 +4,10 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.63
+// @version         1.64
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
-// @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
-// @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
+// @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
+// @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @grant           GM.xmlHttpRequest
 // @connect         shikimori.me
 // @connect         kodikapi.com
@@ -65,7 +65,7 @@ const darkThemeCSS = `
   --sp-radius-xl: 16px;
   --sp-spacing-xs: 4px;
   --sp-spacing-sm: 8px;
-  --sp-spacing-md: 16px;
+  --sp-spacing-md: 10px;
   --sp-spacing-lg: 24px;
   --sp-spacing-xl: 32px;
   
@@ -259,7 +259,8 @@ const darkThemeCSS = `
 /* Область просмотра плеера */
 .sp-viewer {
   background: var(--sp-bg-primary) !important;
-  min-height: 400px !important;
+  min-height: 500px !important;
+  height: 500px !important;
   position: relative !important;
   overflow: hidden !important;
 }
