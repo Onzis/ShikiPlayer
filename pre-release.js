@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.61
+// @version         1.62
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -360,6 +360,22 @@ const darkThemeCSS = `
   width: 24px !important;
   height: 24px !important;
   flex-shrink: 0 !important;
+}
+
+/* Счетчик просмотренных серий */
+.sp-episode-count {
+  position: absolute !important;
+  bottom: -5px !important;
+  right: -5px !important;
+  background: var(--sp-accent) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  padding: 2px 4px !important;
+  border-radius: 10px !important;
+  min-width: 28px !important;
+  text-align: center !important;
+  line-height: 12px !important;
 }
 
 /* Кнопка закрытия в режиме кинотеатра */
@@ -1317,6 +1333,7 @@ class Shikiplayer {
       <line x1="12" y1="5" x2="12" y2="19"></line>
       <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
+    <span class="sp-episode-count">0/0</span>
   </button>
 </div>
         `;
@@ -1393,8 +1410,16 @@ class Shikiplayer {
   }
   
   incrementEpisode() {
-    // Находим кнопку увеличения эпизода на странице Shikimori
-    const incrementButton = document.querySelector(".item-add.increment");
+    // ИСПРАВЛЕНИЕ: Улучшенный поиск кнопки увеличения эпизода
+    // Пробуем несколько возможных селекторов для кнопки
+    let incrementButton = document.querySelector(".item-add.increment");
+    if (!incrementButton) {
+      incrementButton = document.querySelector(".b-user_rate .increment");
+    }
+    if (!incrementButton) {
+      incrementButton = document.querySelector(".b-add_to_list .increment");
+    }
+    
     if (incrementButton) {
       // Кликаем по ней
       incrementButton.click();
@@ -1404,12 +1429,62 @@ class Shikiplayer {
       setTimeout(() => {
         this._episodeBtn.style.background = "";
       }, 500);
+      
+      // ИСПРАВЛЕНИЕ: Увеличиваем задержку и добавляем несколько попыток обновления счетчика
+      // Обновляем счетчик серий с увеличенной задержкой
+      setTimeout(() => {
+        this.updateEpisodeCount();
+      }, 1000);
+      
+      // Вторая попытка обновления счетчика
+      setTimeout(() => {
+        this.updateEpisodeCount();
+      }, 2000);
     } else {
       // Если кнопка не найдена, показываем ошибку
       this._episodeBtn.style.background = "var(--sp-error)";
       setTimeout(() => {
         this._episodeBtn.style.background = "";
       }, 500);
+    }
+  }
+
+  updateEpisodeCount() {
+    // ИСПРАВЛЕНИЕ: Улучшенный поиск элемента с количеством просмотренных серий
+    // Пробуем несколько возможных селекторов
+    let rateNumber = document.querySelector(".rate-number");
+    if (!rateNumber) {
+      rateNumber = document.querySelector(".b-user_rate .rate-number");
+    }
+    if (!rateNumber) {
+      rateNumber = document.querySelector(".b-add_to_list .rate-number");
+    }
+    
+    if (!rateNumber) {
+      console.error("Не удалось найти элемент с количеством просмотренных серий");
+      return;
+    }
+    
+    // Получаем текст из элемента
+    const rateText = rateNumber.textContent;
+    
+    // Находим элемент счетчика в нашей кнопке
+    const episodeCount = this._episodeBtn.querySelector(".sp-episode-count");
+    if (!episodeCount) return;
+    
+    // ИСПРАВЛЕНИЕ: Добавляем анимацию при обновлении счетчика
+    // Сохраняем старое значение для сравнения
+    const oldValue = episodeCount.textContent;
+    
+    // Обновляем текст счетчика
+    episodeCount.textContent = rateText;
+    
+    // Если значение изменилось, добавляем анимацию
+    if (oldValue !== rateText) {
+      episodeCount.style.transform = "scale(1.2)";
+      setTimeout(() => {
+        episodeCount.style.transform = "scale(1)";
+      }, 300);
     }
   }
   
@@ -1430,6 +1505,9 @@ class Shikiplayer {
     this._tooltip.attach(this._theaterBtn, "Театральный режим");
     this._tooltip.attach(this._theaterCloseBtn, "Закрыть режим кинотеатра (Esc)");
     this._tooltip.attach(this._episodeBtn, "Отметить серию как просмотренную");
+    
+    // Обновляем счетчик серий
+    this.updateEpisodeCount();
     
     // Создаем элементы для всех плееров в выпадающем списке
     for (let factory of this._playerFactories) {
