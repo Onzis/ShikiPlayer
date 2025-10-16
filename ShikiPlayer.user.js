@@ -259,7 +259,8 @@ const darkThemeCSS = `
 /* Область просмотра плеера */
 .sp-viewer {
   background: var(--sp-bg-primary) !important;
-  min-height: 400px !important;
+  min-height: 500px !important;
+  height: 500px !important;
   position: relative !important;
   overflow: hidden !important;
 }
