@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name            ShikiPlayer (Dark Theme - Centered Button)
-// @description     видеоплеер для просмотра прямо на Shikimori с тёмной темой
+// @name            ShikiPlayer
+// @description     видеоплеер для просмотра прямо на Shikimori
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
@@ -1498,3 +1498,4 @@ async function startShikiplayer() {
 }
 void startAllohaHelper();
 void startShikiplayer();
+
