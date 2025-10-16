@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.51.4
+// @version         1.51.5
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/pre-release.js
@@ -54,13 +54,9 @@ const darkThemeCSS = `
   --sp-offline: #64748b;
   --sp-loading: #3b82f6;
   
-  /* Границы и тени */
+  /* Границы */
   --sp-border-color: #333333;
   --sp-border-light: #404040;
-  --sp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --sp-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --sp-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --sp-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
   
   /* Радиусы и отступы */
   --sp-radius-sm: 4px;
@@ -103,14 +99,9 @@ const darkThemeCSS = `
   background: var(--sp-bg-primary) !important;
   border: 1px solid var(--sp-border-color) !important;
   border-radius: var(--sp-radius-lg) var(--sp-radius-lg) 0 0 !important;
-  box-shadow: var(--sp-shadow-lg) !important;
   overflow: hidden !important;
   transition: all var(--sp-transition-normal) !important;
   position: relative !important;
-}
-
-.sp-wrapper:hover {
-  box-shadow: var(--sp-shadow-xl) !important;
 }
 
 /* Контейнер плеера */
@@ -184,7 +175,6 @@ const darkThemeCSS = `
   background: var(--sp-bg-tertiary) !important;
   border: 1px solid var(--sp-border-light) !important;
   border-radius: var(--sp-radius-md) !important;
-  box-shadow: var(--sp-shadow-xl) !important;
   min-width: 100px !important;
   z-index: 1000 !important;
   opacity: 0 !important;
@@ -244,7 +234,6 @@ const darkThemeCSS = `
 
 .sp-status-indicator.online {
   background: var(--sp-online) !important;
-  box-shadow: 0 0 8px var(--sp-online) !important;
   animation: pulse 2s infinite !important;
 }
 
@@ -321,19 +310,16 @@ const darkThemeCSS = `
   color: var(--sp-text-primary) !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
-  box-shadow: var(--sp-shadow-sm) !important;
 }
 
 .sp-theater-btn:hover {
   background: var(--sp-bg-hover) !important;
   border-color: var(--sp-accent) !important;
   transform: translateY(-2px) !important;
-  box-shadow: var(--sp-shadow-md) !important;
 }
 
 .sp-theater-btn:active {
   transform: translateY(0) !important;
-  box-shadow: var(--sp-shadow-sm) !important;
 }
 
 .sp-theater-btn svg {
@@ -356,19 +342,16 @@ const darkThemeCSS = `
   color: var(--sp-text-primary) !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
-  box-shadow: var(--sp-shadow-sm) !important;
 }
 
 .sp-episode-btn:hover {
   background: var(--sp-bg-hover) !important;
   border-color: var(--sp-success) !important;
   transform: translateY(-2px) !important;
-  box-shadow: var(--sp-shadow-md) !important;
 }
 
 .sp-episode-btn:active {
   transform: translateY(0) !important;
-  box-shadow: var(--sp-shadow-sm) !important;
 }
 
 .sp-episode-btn svg {
@@ -507,7 +490,6 @@ const darkThemeCSS = `
 .sp-wrapper input:focus {
   outline: none !important;
   border-color: var(--sp-accent) !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
 }
 
 /* Анимация появления */
@@ -1498,4 +1480,3 @@ async function startShikiplayer() {
 }
 void startAllohaHelper();
 void startShikiplayer();
-
