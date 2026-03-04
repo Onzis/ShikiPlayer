@@ -15,6 +15,7 @@
 // @connect         api.kinobox.tv
 // @match           *://shikimori.one/*
 // @match           *://shiki.one/*
+// @match           *://shikimori.io/*
 // @match           *://beggins-as.pljjalgo.online/*
 // @match           *://beggins-as.allarknow.online/*
 // @match           *://beggins-as.algonoew.online/*
@@ -1773,7 +1774,7 @@ async function startAllohaHelper() {
 }
 // Запуск Shikiplayer с поддержкой Turbolinks
 async function startShikiplayer() {
-  if (location.hostname !== "shiki.one") return;
+  if (location.hostname !== "shikimori.io") return;
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
   const kodikUid = "";
   const collapsToken = "4c250f7ac0a8c8a658c789186b9a58a5";
