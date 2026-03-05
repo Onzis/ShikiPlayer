@@ -15,6 +15,7 @@
 // @connect         api.kinobox.tv
 // @match           *://shikimori.one/*
 // @match           *://shiki.one/*
+// @match           *://shikimori.io/*
 // @match           *://beggins-as.pljjalgo.online/*
 // @match           *://beggins-as.allarknow.online/*
 // @match           *://beggins-as.algonoew.online/*
@@ -951,26 +952,14 @@ class AllohaPlayer extends PlayerBase {
     removeEventListener("message", this.onMessage);
   }
 }
-// Alloha Factory - ИЗМЕНЕНО: Используем Kinobox API вместо Alloha API
+// Alloha Factory - ИЗМЕНЕНО: Использует переданные данные вместо самостоятельных запросов
 class AllohaFactory {
-  constructor(kodikApi, kinoboxApi) {
-    this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
-  }
   name = "Alloha";
-  async create(animeId, abort) {
-    let kodikResults = await this._kodikApi.search(animeId);
-    let kodikResult = kodikResults[0];
+  create(kodikResult, kinoboxPlayers) {
     if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-
-    // Используем Kinobox API для получения плеера Alloha
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-
-    // Ищем плеер Alloha в результатах
-    let alloha = kinoboxResult.data.find((p) => p.type === "Alloha");
+    
+    // Ищем плеер Alloha в переданных данных
+    let alloha = kinoboxPlayers.find((p) => p.type === "Alloha");
     if (!alloha || !alloha.iframeUrl) return null;
 
     let season = kodikResult.last_season || 1;
@@ -1062,22 +1051,13 @@ class TurboPlayer extends PlayerBase {
     this.element.src = src.toString();
   }
 }
-// Turbo Factory
+// Использует переданные данные
 class TurboFactory {
-  constructor(kodikApi, kinoboxApi) {
-    this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
-  }
   name = "Turbo";
-  async create(animeId, abort) {
-    let kodikResults = await this._kodikApi.search(animeId);
-    let kodikResult = kodikResults[0];
+  create(kodikResult, kinoboxPlayers) {
     if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-    let turbo = kinoboxResult.data.find((p) => p.type === "Turbo");
+    
+    let turbo = kinoboxPlayers.find((p) => p.type === "Turbo");
     if (!turbo || !turbo.iframeUrl) return null;
     let season = kodikResult.last_season || 1;
     return new TurboPlayer(turbo.iframeUrl, season);
@@ -1101,22 +1081,13 @@ class LumexPlayer extends PlayerBase {
     this.element.src = src.toString();
   }
 }
-// Lumex Factory
+// Использует переданные данные
 class LumexFactory {
-  constructor(kodikApi, kinoboxApi) {
-    this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
-  }
   name = "Lumex";
-  async create(animeId, abort) {
-    let kodikResults = await this._kodikApi.search(animeId);
-    let kodikResult = kodikResults[0];
+  create(kodikResult, kinoboxPlayers) {
     if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-    let lumex = kinoboxResult.data.find((p) => p.type === "Lumex");
+    
+    let lumex = kinoboxPlayers.find((p) => p.type === "Lumex");
     if (!lumex || !lumex.iframeUrl) return null;
     return new LumexPlayer(lumex.iframeUrl);
   }
@@ -1139,22 +1110,13 @@ class VeoveoPlayer extends PlayerBase {
     this.element.src = src.toString();
   }
 }
-// Veoveo Factory
+// Использует переданные данные
 class VeoveoFactory {
-  constructor(kodikApi, kinoboxApi) {
-    this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
-  }
   name = "Veoveo";
-  async create(animeId, abort) {
-    let kodikResults = await this._kodikApi.search(animeId);
-    let kodikResult = kodikResults[0];
+  create(kodikResult, kinoboxPlayers) {
     if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-    let veoveo = kinoboxResult.data.find((p) => p.type === "Veoveo");
+    
+    let veoveo = kinoboxPlayers.find((p) => p.type === "Veoveo");
     if (!veoveo || !veoveo.iframeUrl) return null;
     return new VeoveoPlayer(veoveo.iframeUrl);
   }
@@ -1177,22 +1139,13 @@ class VibixPlayer extends PlayerBase {
     this.element.src = src.toString();
   }
 }
-// Vibix Factory
+// Использует переданные данные
 class VibixFactory {
-  constructor(kodikApi, kinoboxApi) {
-    this._kodikApi = kodikApi;
-    this._kinoboxApi = kinoboxApi;
-  }
   name = "Vibix";
-  async create(animeId, abort) {
-    let kodikResults = await this._kodikApi.search(animeId);
-    let kodikResult = kodikResults[0];
+  create(kodikResult, kinoboxPlayers) {
     if (!kodikResult || !kodikResult.kinopoisk_id) return null;
-    let kinoboxResult = await this._kinoboxApi.players(
-      kodikResult.kinopoisk_id,
-      abort
-    );
-    let vibix = kinoboxResult.data.find((p) => p.type === "Vibix");
+    
+    let vibix = kinoboxPlayers.find((p) => p.type === "Vibix");
     if (!vibix || !vibix.iframeUrl) return null;
     return new VibixPlayer(vibix.iframeUrl);
   }
@@ -1324,8 +1277,10 @@ class CollapsApi {
 }
 // Основной класс Shikiplayer
 class Shikiplayer {
-  constructor(playerFactories) {
+  constructor(playerFactories, kodikApi, kinoboxApi) {
     this._playerFactories = playerFactories;
+    this._kodikApi = kodikApi;
+    this._kinoboxApi = kinoboxApi;
     // Создаем внешний контейнер
     this.element = document.createElement("div");
     this.element.className = "sp-outer-wrapper";
@@ -1615,43 +1570,131 @@ class Shikiplayer {
         }
       }
     }
-    // Загружаем остальные плееры в фоновом режиме
-    for (let factory of this._playerFactories) {
-      if (factory.name === "Kodik") continue; // Пропускаем Kodik, уже загружен
-      let item = this._dropdownMenu.querySelector(
-        `[data-player-name='${factory.name}']`
-      );
-      if (!item) continue;
-      // Используем Promise без await, чтобы не блокировать выполнение
-      factory
-        .create(entry.id, abort)
-        .then((player) => {
-          item.classList.remove("loading");
-          if (!player) {
+    
+    // Централизованная загрузка данных для Kinobox плееров
+    // ОДИН запрос к Kodik API для получения kinopoisk_id
+    // ОДИН запрос к Kinobox API для получения всех плееров
+    try {
+      // Получаем данные от Kodik (нужен kinopoisk_id)
+      let kodikResults = await this._kodikApi.search(entry.id, abort);
+      let kodikResult = kodikResults[0];
+      
+      if (kodikResult && kodikResult.kinopoisk_id) {
+        // Делаем ОДИН запрос к Kinobox API для получения всех плееров
+        let kinoboxResult = await this._kinoboxApi.players(
+          kodikResult.kinopoisk_id,
+          abort
+        );
+        let kinoboxPlayers = kinoboxResult.data;
+        
+        // Теперь создаем все плееры, используя полученные данные
+        for (let factory of this._playerFactories) {
+          if (factory.name === "Kodik") continue;
+          if (factory.name === "Collaps") continue; // Collaps обрабатывается отдельно
+          
+          let item = this._dropdownMenu.querySelector(
+            `[data-player-name='${factory.name}']`
+          );
+          if (!item) continue;
+          
+          try {
+            // Синхронное создание плеера из переданных данных
+            let player = factory.create(kodikResult, kinoboxPlayers);
+            item.classList.remove("loading");
+            if (!player) {
+              item
+                .querySelector(".sp-status-indicator")
+                .classList.remove("loading");
+              item.querySelector(".sp-status-indicator").classList.add("offline");
+              continue;
+            }
+            this._playerInstances.set(factory.name, player);
+            item
+              .querySelector(".sp-status-indicator")
+              .classList.remove("loading");
+            item.querySelector(".sp-status-indicator").classList.add("online");
+            item.addEventListener("click", () => {
+              this.switchPlayer(factory.name, player);
+              this._dropdown.classList.remove("open");
+            });
+          } catch (e) {
+            console.error(`Error in ${factory.name}:`, e);
             item
               .querySelector(".sp-status-indicator")
               .classList.remove("loading");
             item.querySelector(".sp-status-indicator").classList.add("offline");
-            return;
+            item.classList.remove("loading");
           }
-          this._playerInstances.set(factory.name, player);
-          item
-            .querySelector(".sp-status-indicator")
-            .classList.remove("loading");
-          item.querySelector(".sp-status-indicator").classList.add("online");
-          item.addEventListener("click", () => {
-            this.switchPlayer(factory.name, player);
-            this._dropdown.classList.remove("open");
-          });
-        })
-        .catch((e) => {
-          console.error(`Error in ${factory.name}:`, e);
+        }
+      } else {
+        // Нет kinopoisk_id - помечаем все Kinobox плееры как офлайн
+        for (let factory of this._playerFactories) {
+          if (factory.name === "Kodik" || factory.name === "Collaps") continue;
+          let item = this._dropdownMenu.querySelector(
+            `[data-player-name='${factory.name}']`
+          );
+          if (item) {
+            item.classList.remove("loading");
+            item
+              .querySelector(".sp-status-indicator")
+              .classList.remove("loading");
+            item.querySelector(".sp-status-indicator").classList.add("offline");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error loading player data:", e);
+      // При ошибке помечаем все Kinobox плееры как офлайн
+      for (let factory of this._playerFactories) {
+        if (factory.name === "Kodik" || factory.name === "Collaps") continue;
+        let item = this._dropdownMenu.querySelector(
+          `[data-player-name='${factory.name}']`
+        );
+        if (item) {
+          item.classList.remove("loading");
           item
             .querySelector(".sp-status-indicator")
             .classList.remove("loading");
           item.querySelector(".sp-status-indicator").classList.add("offline");
-          item.classList.remove("loading");
-        });
+        }
+      }
+    }
+    
+    // Загружаем Collaps (т.к. отдельный API)
+    let collapsFactory = this._playerFactories.find((f) => f.name === "Collaps");
+    if (collapsFactory) {
+      let item = this._dropdownMenu.querySelector("[data-player-name='Collaps']");
+      if (item) {
+        collapsFactory
+          .create(entry.id, abort)
+          .then((player) => {
+            item.classList.remove("loading");
+            if (!player) {
+              item
+                .querySelector(".sp-status-indicator")
+                .classList.remove("loading");
+              item.querySelector(".sp-status-indicator").classList.add("offline");
+              return;
+            }
+            this._playerInstances.set("Collaps", player);
+            item
+              .querySelector(".sp-status-indicator")
+              .classList.remove("loading");
+            item.querySelector(".sp-status-indicator").classList.add("online");
+            item.addEventListener("click", () => {
+              this.switchPlayer("Collaps", player);
+              this._dropdown.classList.remove("open");
+            });
+          })
+          .catch((e) => {
+            console.error(`Error in Collaps:`, e);
+            item
+              .querySelector(".sp-status-indicator")
+              .classList.remove("loading");
+            item.querySelector(".sp-status-indicator").classList.add("offline");
+            item.classList.remove("loading");
+          });
+      }
     }
   }
 
@@ -1731,7 +1774,7 @@ async function startAllohaHelper() {
 }
 // Запуск Shikiplayer с поддержкой Turbolinks
 async function startShikiplayer() {
-  if (location.hostname !== "shiki.one") return;
+  if (location.hostname !== "shikimori.io") return;
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
   const kodikUid = "";
   const collapsToken = "4c250f7ac0a8c8a658c789186b9a58a5";
@@ -1741,13 +1784,12 @@ async function startShikiplayer() {
   let collapsApi = new CollapsApi(http, collapsToken);
   let factories = [
     new KodikFactory(kodikUid, kodikApi),
-    // ИЗМЕНЕНО: AllohaFactory теперь использует Kinobox API вместо Alloha API
-    new AllohaFactory(kodikApi, kinoboxApi),
-    new TurboFactory(kodikApi, kinoboxApi),
-    new LumexFactory(kodikApi, kinoboxApi),
-    new VeoveoFactory(kodikApi, kinoboxApi),
-    new VibixFactory(kodikApi, kinoboxApi), // Добавлен новый плеер Vibix
-    new CollapsFactory(kodikApi, collapsApi),
+    new AllohaFactory(),
+    new TurboFactory(),
+    new LumexFactory(),
+    new VeoveoFactory(),
+    new VibixFactory(),
+    new CollapsFactory(kodikApi, collapsApi), // Collaps требует отдельный API
   ];
   let shikiplayer = null;
   // Функция инициализации плеера
@@ -1755,7 +1797,7 @@ async function startShikiplayer() {
     if (shikiplayer) {
       shikiplayer.dispose(); // Очищаем текущий плеер
     }
-    shikiplayer = new Shikiplayer(factories);
+    shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi);
     await shikiplayer.start(new AbortController().signal);
   }
   // Первичный запуск
