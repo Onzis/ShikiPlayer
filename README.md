@@ -1,5 +1,8 @@
 # ShikiPlayer
 
+[![Установить](https://img.shields.io/badge/Установить-Tampermonkey-00ad5f?style=flat-square&logo=tampermonkey)](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js)
+[![Версия](https://img.shields.io/badge/версия-1.68-blue?style=flat-square)](https://github.com/Onzis/ShikiPlayer)
+
 ShikiPlayer — это пользовательский скрипт, который встраивает видеоплеер непосредственно на сайт Shikimori, позволяя смотреть аниме прямо на странице без необходимости покидать платформу. Поддерживает несколько источников видео (Turbo, Lumex, Alloha, Kodik) с автоматическим переключением на резервный источник в случае сбоя и выпадающим меню для ручного выбора.
 
 - [Возможности](#возможности)
