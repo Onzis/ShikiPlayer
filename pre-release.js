@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.68
+// @version         1.72
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -14,6 +14,7 @@
 // @connect         apicollaps.cc
 // @connect         api.kinobox.tv
 // @connect         fbphdplay.top
+// @connect         kp.apiget.ru
 // @match           *://shikimori.io/*
 // @match           *://beggins-as.pljjalgo.online/*
 // @match           *://beggins-as.allarknow.online/*
@@ -27,36 +28,36 @@
 const darkThemeCSS = `
 /* ==ShikiPlayer Dark Theme== */
 :root {
-  /* Основные цвета тёмной темы */
-  --sp-bg-primary: #0a0a0a;
-  --sp-bg-secondary: #1a1a1a;
-  --sp-bg-tertiary: #252525;
-  --sp-bg-hover: #2a2a2a;
-  --sp-bg-active: #333333;
+  /* Основные цвета (Obsidian Modern) */
+  --sp-bg-primary: #0b0c10;
+  --sp-bg-secondary: #121319;
+  --sp-bg-tertiary: #1c1e27;
+  --sp-bg-hover: #262936;
+  --sp-bg-active: #2e3242;
 
   /* Текстовые цвета */
-  --sp-text-primary: #e0e0e0;
-  --sp-text-secondary: #b0b0b0;
-  --sp-text-muted: #808080;
-  --sp-text-inverse: #000000;
+  --sp-text-primary: #f1f3f9;
+  --sp-text-secondary: #a0aec0;
+  --sp-text-muted: #718096;
+  --sp-text-inverse: #0b0c10;
 
   /* Акцентные цвета */
-  --sp-accent: #6366f1;
-  --sp-accent-hover: #818cf8;
-  --sp-accent-active: #4f46e5;
-  --sp-accent-light: #e0e7ff;
+  --sp-accent: #3b82f6;
+  --sp-accent-hover: #60a5fa;
+  --sp-accent-active: #2563eb;
+  --sp-accent-light: rgba(59, 130, 246, 0.15);
 
   /* Статусные цвета */
   --sp-success: #10b981;
   --sp-warning: #f59e0b;
   --sp-error: #ef4444;
-  --sp-online: #22c55e;
-  --sp-offline: #64748b;
+  --sp-online: #10b981;
+  --sp-offline: #718096;
   --sp-loading: #3b82f6;
 
   /* Границы */
-  --sp-border-color: #333333;
-  --sp-border-light: #404040;
+  --sp-border-color: rgba(255, 255, 255, 0.08);
+  --sp-border-light: rgba(255, 255, 255, 0.15);
 
   /* Радиусы и отступы */
   --sp-radius-sm: 4px;
@@ -69,29 +70,38 @@ const darkThemeCSS = `
   --sp-spacing-lg: 24px;
   --sp-spacing-xl: 32px;
 
+  /* Тени */
+  --sp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --sp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --sp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --sp-shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
   /* Анимации */
-  --sp-transition-fast: 150ms ease;
-  --sp-transition-normal: 250ms ease;
-  --sp-transition-slow: 350ms ease;
+  --sp-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sp-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sp-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Внешний контейнер для центрирования кнопки */
+/* Внешний контейнер для центрирования */
 .sp-outer-wrapper {
-  margin: var(--sp-spacing-lg) 0 !important;
+  margin: var(--sp-spacing-xl) 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  animation: sp-fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* Контейнер для кнопки с фоном как у плеера */
+/* Контейнер для кнопок внизу */
 .sp-button-container {
-  background: linear-gradient(135deg, #2b2a39eb 0%, #2b2a39eb 100%) !important;
+  background: var(--sp-bg-secondary) !important;
   border: 1px solid var(--sp-border-color) !important;
   border-top: none !important;
   border-radius: 0 0 var(--sp-radius-lg) var(--sp-radius-lg) !important;
-  padding: var(--sp-spacing-md) !important;
+  padding: 12px 16px !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
   margin-top: -1px !important;
-  gap: var(--sp-spacing-md) !important;
+  gap: var(--sp-spacing-sm) !important;
+  box-shadow: var(--sp-shadow-md) !important;
 }
 
 /* Базовые стили для ShikiPlayer */
@@ -102,6 +112,7 @@ const darkThemeCSS = `
   overflow: hidden !important;
   transition: all var(--sp-transition-normal) !important;
   position: relative !important;
+  box-shadow: var(--sp-shadow-lg) !important;
 }
 
 /* Контейнер плеера */
@@ -113,7 +124,7 @@ const darkThemeCSS = `
 
 /* Заголовок плеера */
 .sp-header {
-  background: linear-gradient(135deg, #2b2a39eb 0%, #2b2a39eb 100%) !important;
+  background: var(--sp-bg-secondary) !important;
   padding: var(--sp-spacing-md) var(--sp-spacing-lg) !important;
   border-bottom: 1px solid var(--sp-border-color) !important;
   display: flex !important;
@@ -123,12 +134,18 @@ const darkThemeCSS = `
 
 .sp-title {
   color: var(--sp-text-primary) !important;
-  font-size: 18px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
   margin: 0 !important;
   display: flex !important;
   align-items: center !important;
   gap: var(--sp-spacing-sm) !important;
+  letter-spacing: -0.01em !important;
+}
+
+.sp-title-icon {
+  color: var(--sp-accent) !important;
+  animation: sp-pulse-glow 2s infinite !important;
 }
 
 /* Выпадающий список плееров */
@@ -139,73 +156,84 @@ const darkThemeCSS = `
 
 .sp-dropdown-toggle {
   background: var(--sp-bg-tertiary) !important;
-  border: 1px solid var(--sp-border-light) !important;
+  border: 1px solid var(--sp-border-color) !important;
   border-radius: var(--sp-radius-md) !important;
   color: var(--sp-text-primary) !important;
-  padding: var(--sp-spacing-sm) var(--sp-spacing-md) !important;
+  padding: 8px 14px !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   gap: var(--sp-spacing-sm) !important;
   transition: all var(--sp-transition-fast) !important;
-  font-size: 14px !important;
+  font-size: 13.5px !important;
   font-weight: 500 !important;
+  box-shadow: var(--sp-shadow-sm) !important;
 }
 
 .sp-dropdown-toggle:hover {
   background: var(--sp-bg-hover) !important;
   border-color: var(--sp-accent) !important;
   transform: translateY(-1px) !important;
+  box-shadow: var(--sp-shadow-md), 0 0 10px rgba(59, 130, 246, 0.1) !important;
 }
 
 .sp-dropdown-toggle::after {
   content: "▼" !important;
-  font-size: 12px !important;
-  transition: transform var(--sp-transition-fast) !important;
+  font-size: 9px !important;
+  transition: transform var(--sp-transition-normal) !important;
+  color: var(--sp-text-secondary) !important;
+  margin-left: var(--sp-spacing-xs) !important;
 }
 
 .sp-dropdown.open .sp-dropdown-toggle::after {
   transform: rotate(180deg) !important;
+  color: var(--sp-accent) !important;
 }
 
 .sp-dropdown-menu {
   position: absolute !important;
   top: 100% !important;
   right: 0 !important;
-  background: var(--sp-bg-tertiary) !important;
-  border: 1px solid var(--sp-border-light) !important;
+  background: rgba(28, 30, 39, 0.95) !important;
+  border: 1px solid var(--sp-border-color) !important;
   border-radius: var(--sp-radius-md) !important;
-  min-width: 100px !important;
+  min-width: 160px !important;
   z-index: 1000 !important;
   opacity: 0 !important;
   visibility: hidden !important;
-  transform: translateY(-10px) !important;
-  transition: all var(--sp-transition-fast) !important;
-  margin-top: var(--sp-spacing-xs) !important;
+  transform: translateY(-8px) scale(0.98) !important;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  margin-top: 6px !important;
   max-height: 300px !important;
   overflow-y: auto !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: var(--sp-shadow-premium) !important;
+  padding: 4px !important;
 }
 
 .sp-dropdown.open .sp-dropdown-menu {
   opacity: 1 !important;
   visibility: visible !important;
-  transform: translateY(0) !important;
+  transform: translateY(0) scale(1) !important;
 }
 
 .sp-dropdown-item {
-  padding: var(--sp-spacing-sm) var(--sp-spacing-md) !important;
+  padding: 8px 12px !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
   display: flex !important;
   align-items: center !important;
   gap: var(--sp-spacing-sm) !important;
   color: var(--sp-text-secondary) !important;
-  font-size: 14px !important;
-  border-bottom: 1px solid var(--sp-border-color) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  border-radius: var(--sp-radius-sm) !important;
+  border: none !important;
+  margin-bottom: 2px !important;
 }
 
 .sp-dropdown-item:last-child {
-  border-bottom: none !important;
+  margin-bottom: 0 !important;
 }
 
 .sp-dropdown-item:hover {
@@ -214,7 +242,7 @@ const darkThemeCSS = `
 }
 
 .sp-dropdown-item.active {
-   background: #3d3d3d !important;
+   background: var(--sp-accent) !important;
    color: #ffffff !important;
 }
 
@@ -225,8 +253,8 @@ const darkThemeCSS = `
 
 /* Индикаторы статуса */
 .sp-status-indicator {
-  width: 8px !important;
-  height: 8px !important;
+  width: 7px !important;
+  height: 7px !important;
   border-radius: 50% !important;
   margin-left: auto !important;
   transition: all var(--sp-transition-fast) !important;
@@ -234,7 +262,8 @@ const darkThemeCSS = `
 
 .sp-status-indicator.online {
   background: var(--sp-online) !important;
-  animation: pulse 2s infinite !important;
+  box-shadow: 0 0 8px var(--sp-online) !important;
+  animation: sp-pulse 2s infinite !important;
 }
 
 .sp-status-indicator.offline {
@@ -243,17 +272,11 @@ const darkThemeCSS = `
 
 .sp-status-indicator.loading {
   background: var(--sp-loading) !important;
-  animation: spin 1s linear infinite !important;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  animation: sp-spin 1s linear infinite !important;
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid rgba(59, 130, 246, 0.2) !important;
+  border-top: 2px solid var(--sp-loading) !important;
 }
 
 /* Область просмотра плеера */
@@ -279,114 +302,154 @@ const darkThemeCSS = `
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  background: rgba(10, 10, 10, 0.9) !important;
+  background: rgba(11, 12, 16, 0.85) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 100 !important;
-  backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(8px) !important;
 }
 
-.sp-loading-overlay::after {
-  content: "" !important;
-  width: 40px !important;
-  height: 40px !important;
-  border: 3px solid var(--sp-border-color) !important;
+.sp-loading-content {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: var(--sp-spacing-md) !important;
+}
+
+.sp-loading-spinner {
+  width: 44px !important;
+  height: 44px !important;
+  border: 3px solid rgba(255, 255, 255, 0.05) !important;
   border-top: 3px solid var(--sp-accent) !important;
   border-radius: 50% !important;
-  animation: spin 1s linear infinite !important;
+  animation: sp-spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
 }
 
-/* Кнопка режима кинотеатра - квадратная с закругленными углами */
-.sp-theater-btn {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 48px !important;
-  height: 48px !important;
-  padding: var(--sp-spacing-sm) !important;
-  background: var(--sp-bg-tertiary) !important;
-  border: 1px solid var(--sp-border-light) !important;
-  border-radius: var(--sp-radius-md) !important;
-  color: var(--sp-text-primary) !important;
-  cursor: pointer !important;
-  transition: all var(--sp-transition-fast) !important;
-  position: relative !important;
+.sp-loading-text {
+  color: var(--sp-text-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  animation: sp-pulse 1.5s ease-in-out infinite !important;
 }
 
-.sp-theater-btn:hover {
-  background: var(--sp-bg-hover) !important;
-  border-color: var(--sp-accent) !important;
-  transform: translateY(-2px) !important;
-}
-
-.sp-theater-btn:active {
-  transform: translateY(0) !important;
-}
-
-.sp-theater-btn svg {
-  width: 24px !important;
-  height: 24px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Кнопка добавления эпизода */
+/* Кнопки управления */
+.sp-theater-btn,
 .sp-episode-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 48px !important;
-  height: 48px !important;
-  padding: var(--sp-spacing-sm) !important;
+  height: 42px !important;
+  padding: 0 16px !important;
   background: var(--sp-bg-tertiary) !important;
-  border: 1px solid var(--sp-border-light) !important;
+  border: 1px solid var(--sp-border-color) !important;
   border-radius: var(--sp-radius-md) !important;
   color: var(--sp-text-primary) !important;
   cursor: pointer !important;
   transition: all var(--sp-transition-fast) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
   position: relative !important;
+  box-shadow: var(--sp-shadow-sm) !important;
+  gap: var(--sp-spacing-sm) !important;
 }
 
+.sp-theater-btn {
+  width: 42px !important;
+  padding: 0 !important;
+}
+
+.sp-episode-btn {
+  flex-grow: 1 !important;
+  max-width: 240px !important;
+}
+
+.sp-theater-btn:hover,
 .sp-episode-btn:hover {
   background: var(--sp-bg-hover) !important;
   border-color: var(--sp-accent) !important;
-  transform: translateY(-2px) !important;
+  color: var(--sp-text-primary) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: var(--sp-shadow-md) !important;
 }
 
+.sp-theater-btn:active,
 .sp-episode-btn:active {
   transform: translateY(0) !important;
 }
 
+.sp-theater-btn svg,
 .sp-episode-btn svg {
-  width: 24px !important;
-  height: 24px !important;
+  width: 18px !important;
+  height: 18px !important;
   flex-shrink: 0 !important;
+  color: var(--sp-text-secondary) !important;
+  transition: color var(--sp-transition-fast) !important;
 }
 
-/* Счетчик просмотренных серий */
-.sp-episode-count {
-  position: absolute !important;
-  bottom: -5px !important;
-  right: -5px !important;
-  background: var(--sp-accent) !important;
+.sp-theater-btn:hover svg,
+.sp-episode-btn:hover svg {
+  color: var(--sp-accent) !important;
+}
+
+/* Обратная связь кнопок через классы */
+.sp-episode-btn.success {
+  background: var(--sp-success) !important;
+  border-color: var(--sp-success) !important;
   color: #ffffff !important;
-  font-size: 12px !important;
-  font-weight: bold !important;
-  padding: 2px 4px !important;
-  border-radius: 10px !important;
-  min-width: 28px !important;
-  text-align: center !important;
-  line-height: 12px !important;
+}
+.sp-episode-btn.success svg {
+  color: #ffffff !important;
+}
+.sp-episode-btn.success .sp-episode-count {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.sp-episode-btn.error {
+  background: var(--sp-error) !important;
+  border-color: var(--sp-error) !important;
+  color: #ffffff !important;
+}
+.sp-episode-btn.error svg {
+  color: #ffffff !important;
+}
+.sp-episode-btn.error .sp-episode-count {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+/* Счетчик серий */
+.sp-episode-count {
+  background: var(--sp-bg-primary) !important;
+  border: 1px solid var(--sp-border-color) !important;
+  color: var(--sp-accent) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 20px !important;
+  margin-left: 4px !important;
+  display: inline-block !important;
+  line-height: normal !important;
+  transition: all 0.2s ease !important;
+}
+
+.sp-episode-btn:hover .sp-episode-count {
+  background: var(--sp-accent-light) !important;
+  border-color: var(--sp-accent) !important;
 }
 
 /* Кнопка закрытия в режиме кинотеатра */
 .sp-theater-close {
   position: absolute !important;
-  top: var(--sp-spacing-md) !important;
-  right: var(--sp-spacing-md) !important;
-  width: 40px !important;
-  height: 40px !important;
-  background: rgba(0, 0, 0, 0.7) !important;
+  top: 20px !important;
+  right: 20px !important;
+  width: 44px !important;
+  height: 44px !important;
+  background: rgba(18, 19, 25, 0.8) !important;
   border: 1px solid var(--sp-border-color) !important;
   border-radius: var(--sp-radius-md) !important;
   display: none !important;
@@ -395,19 +458,26 @@ const darkThemeCSS = `
   cursor: pointer !important;
   z-index: 10000 !important;
   transition: all var(--sp-transition-fast) !important;
-  backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(8px) !important;
 }
 
 .sp-theater-close:hover {
-  background: rgba(239, 68, 68, 0.8) !important;
+  background: rgba(239, 68, 68, 0.9) !important;
   border-color: var(--sp-error) !important;
-  transform: scale(1.1) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
 }
 
 .sp-theater-close svg {
   width: 20px !important;
   height: 20px !important;
   color: var(--sp-text-primary) !important;
+  transition: transform var(--sp-transition-fast) !important;
+}
+
+.sp-theater-close:hover svg {
+  transform: rotate(90deg) !important;
+  color: #ffffff !important;
 }
 
 /* Режим кинотеатра */
@@ -440,21 +510,21 @@ const darkThemeCSS = `
 /* Стили для кастомных подсказок */
 .sp-tooltip {
   position: absolute !important;
-  background: var(--sp-bg-secondary) !important;
+  background: rgba(28, 30, 39, 0.95) !important;
   color: var(--sp-text-primary) !important;
-  padding: var(--sp-spacing-xs) var(--sp-spacing-sm) !important;
-  border-radius: var(--sp-radius-sm) !important;
-  font-size: 14px !important;
+  padding: 6px 12px !important;
+  border-radius: var(--sp-radius-md) !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   white-space: nowrap !important;
   z-index: 10000 !important;
   pointer-events: none !important;
   opacity: 0 !important;
-  transform: translateY(-5px) !important;
+  transform: translateY(-4px) !important;
   transition: all var(--sp-transition-fast) !important;
-  backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(8px) !important;
   border: 1px solid var(--sp-border-color) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: var(--sp-shadow-premium) !important;
 }
 
 .sp-tooltip.visible {
@@ -465,26 +535,28 @@ const darkThemeCSS = `
 .sp-tooltip::before {
   content: "" !important;
   position: absolute !important;
-  bottom: 100% !important;
+  bottom: -4px !important;
   left: 50% !important;
-  transform: translateX(-50%) !important;
-  border-width: 5px !important;
-  border-style: solid !important;
-  border-color: transparent transparent var(--sp-bg-secondary) transparent !important;
+  transform: translateX(-50%) rotate(45deg) !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: rgba(28, 30, 39, 0.95) !important;
+  border-right: 1px solid var(--sp-border-color) !important;
+  border-bottom: 1px solid var(--sp-border-color) !important;
 }
 
 /* Скроллбар */
 .sp-dropdown-menu::-webkit-scrollbar {
-  width: 6px !important;
+  width: 4px !important;
 }
 
 .sp-dropdown-menu::-webkit-scrollbar-track {
-  background: var(--sp-bg-secondary) !important;
+  background: transparent !important;
 }
 
 .sp-dropdown-menu::-webkit-scrollbar-thumb {
-  background: var(--sp-border-light) !important;
-  border-radius: 3px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 2px !important;
 }
 
 .sp-dropdown-menu::-webkit-scrollbar-thumb:hover {
@@ -497,10 +569,12 @@ const darkThemeCSS = `
     padding: var(--sp-spacing-sm) var(--sp-spacing-md) !important;
     flex-direction: column !important;
     gap: var(--sp-spacing-sm) !important;
+    align-items: stretch !important;
   }
 
   .sp-dropdown {
     width: 100% !important;
+    margin-left: 0 !important;
   }
 
   .sp-dropdown-toggle {
@@ -509,60 +583,65 @@ const darkThemeCSS = `
   }
 
   .sp-dropdown-menu {
-    position: absolute !important;
-    top: 100% !important;
     left: 0 !important;
-    transform: none !important;
     width: 100% !important;
     max-width: none !important;
-    border-radius: 0 0 var(--sp-radius-md) var(--sp-radius-md) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   }
-}
 
-/* Дополнительные улучшения */
-.sp-wrapper * {
-  box-sizing: border-box !important;
+  .sp-button-container {
+    flex-direction: column !important;
+    gap: var(--sp-spacing-sm) !important;
+    padding: var(--sp-spacing-md) !important;
+  }
+
+  .sp-theater-btn,
+  .sp-episode-btn {
+    width: 100% !important;
+    max-width: none !important;
+  }
 }
 
 .sp-wrapper button,
 .sp-wrapper select,
 .sp-wrapper input {
-  background: var(--sp-bg-tertiary) !important;
-  border: 1px solid var(--sp-border-light) !important;
-  border-radius: var(--sp-radius-sm) !important;
-  color: var(--sp-text-primary) !important;
-  padding: var(--sp-spacing-xs) var(--sp-spacing-sm) !important;
-  transition: all var(--sp-transition-fast) !important;
+  font-family: inherit !important;
 }
 
-.sp-wrapper button:hover,
-.sp-wrapper select:hover,
-.sp-wrapper input:hover {
-  border-color: var(--sp-accent) !important;
+/* Анимации */
+@keyframes sp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-.sp-wrapper button:focus,
-.sp-wrapper select:focus,
-.sp-wrapper input:focus {
-  outline: none !important;
-  border-color: var(--sp-accent) !important;
+@keyframes sp-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Анимация появления */
-.sp-outer-wrapper {
-  animation: fadeInUp 0.5s ease-out !important;
-}
-
-@keyframes fadeInUp {
+@keyframes sp-fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes sp-pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.sp-pulse {
+  animation: sp-pulse-anim 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+@keyframes sp-pulse-anim {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) !important; }
+  100% { transform: scale(1); }
 }
 `;
 
@@ -700,6 +779,37 @@ class ResponseError extends ErrorBase {
     this.response = response;
   }
 }
+// Простой полифил/обертка ответа, так как стандартный конструктор Response() в браузере
+// падает с RangeError, если передать статус 0 (для сетевых ошибок), а также накладывает ограничения
+// на передачу тела c определенными кодами (например, 204, 304).
+class GMResponse {
+  constructor(status, statusText, responseText, responseHeaders) {
+    this.status = status;
+    this.statusText = statusText || "";
+    this.ok = status >= 200 && status <= 299;
+    this._text = responseText || "";
+    
+    let parsedHeaders = {};
+    if (Array.isArray(responseHeaders)) {
+      for (let item of responseHeaders) {
+        if (Array.isArray(item) && item[0]) {
+          parsedHeaders[item[0].toLowerCase()] = item[1] || "";
+        }
+      }
+    }
+    this.headers = {
+      get: (name) => parsedHeaders[name.toLowerCase()] || null,
+      has: (name) => name.toLowerCase() in parsedHeaders,
+    };
+  }
+  async text() {
+    return this._text;
+  }
+  async json() {
+    return JSON.parse(this._text);
+  }
+}
+
 // HTTP-клиент для GM.xmlHttpRequest с таймаутом
 class GMHttp {
   async fetch(input, init) {
@@ -719,12 +829,27 @@ class GMHttp {
       throw new Error(`HTTP method ${requestMethod} is not supported`);
     }
     let requestUrl = input.toString();
-    let requestBody = init?.body
-      ? await new Response(init.body).text()
-      : undefined;
+    
+    let requestBody = init?.body;
     let requestHeaders = init?.headers
       ? Object.fromEntries(new Headers(init.headers))
       : {};
+
+    // Handle FormData and other bodies correctly in Userscript environment
+    if (requestBody instanceof FormData) {
+      // GM.xmlHttpRequest natively supports FormData, and we should NOT set/override
+      // Content-Type ourselves so that the underlying browser engine sets the correct multipart boundary.
+      delete requestHeaders["content-type"];
+      delete requestHeaders["Content-Type"];
+    } else if (requestBody instanceof URLSearchParams) {
+      requestBody = requestBody.toString();
+      if (!requestHeaders["content-type"] && !requestHeaders["Content-Type"]) {
+        requestHeaders["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
+      }
+    } else if (requestBody && typeof requestBody !== "string") {
+      requestBody = await new Response(requestBody).text();
+    }
+
     // Добавляем таймаут по умолчанию 10 секунд
     const timeout = init?.timeout || 10000;
     let gmResponse = await new Promise((resolve, reject) => {
@@ -748,17 +873,24 @@ class GMHttp {
     });
     // Если status = 0, запрос не дошёл — создаём пустой ответ
     if (gmResponse.status === 0) {
-      return new Response("", { status: 0, statusText: "Network Error" });
+      return new GMResponse(0, "Network Error", "", []);
     }
-    let responseHeaders = gmResponse.responseHeaders
-      .trim()
-      .split(/\r?\n/)
-      .map((line) => line.split(/:\s*/, 2));
-    return new Response(gmResponse.response, {
-      status: gmResponse.status,
-      statusText: gmResponse.statusText,
-      headers: responseHeaders,
-    });
+    let responseHeaders = [];
+    if (gmResponse.responseHeaders) {
+      responseHeaders = gmResponse.responseHeaders
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => {
+          let parts = line.split(/:\s*/, 2);
+          return [parts[0], parts[1] || ""];
+        });
+    }
+    return new GMResponse(
+      gmResponse.status,
+      gmResponse.statusText,
+      gmResponse.response || "",
+      responseHeaders
+    );
   }
 }
 // Утилита для проверки JSON
@@ -800,6 +932,7 @@ class KodikPlayer extends PlayerBase {
     this._results = results;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
+    this.element.referrerPolicy = "no-referrer";
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
     this._translation = results[0] || new Error("No translation found");
@@ -877,9 +1010,15 @@ class IframePlayer extends PlayerBase {
     this.name = name;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
+    this.element.referrerPolicy = "no-referrer";
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
-    this.element.src = new URL(url).toString();
+    
+    let finalUrl = url;
+    if (finalUrl && finalUrl.startsWith("//")) {
+      finalUrl = "https:" + finalUrl;
+    }
+    this.element.src = finalUrl;
   }
 }
 // SimpleFactory — фабрика для создания IframePlayer по типу из Kinobox данных
@@ -924,7 +1063,7 @@ class KodikApi {
     return data.results;
   }
 }
-// API для Kinobox (используется для Turbo, Lumex, Alloha, Veoveo, Vibix и Collaps)
+// API для Kinobox (используется для Turbo, Alloha и Collaps)
 class KinoboxApi {
   constructor(http) {
     this._http = http;
@@ -945,6 +1084,99 @@ class KinoboxApi {
     return Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
   }
 }
+
+// Поиск имени плеера по URL (для интеграции источников из Kinopoisk Player)
+function getPlayerNameFromUrl(url) {
+  try {
+    let finalUrl = url;
+    if (finalUrl && finalUrl.startsWith("//")) {
+      finalUrl = "https:" + finalUrl;
+    }
+    let hostname = new URL(finalUrl).hostname.toLowerCase();
+    if (hostname.includes("lumex") || hostname.includes("lmx") || hostname.includes("temptcdn") || hostname.includes("ruapi")) return "Lumex";
+    if (hostname.includes("alloha") || hostname.includes("shall") || hostname.includes("algonoew")) return "Alloha (КП)";
+    if (hostname.includes("collaps") || hostname.includes("apicollaps") || hostname.includes("api.top")) return "Collaps (КП)";
+    if (hostname.includes("turbo") || hostname.includes("trb")) return "Turbo (КП)";
+    if (hostname.includes("ustore") || hostname.includes("ustr")) return "Ustore (КП)";
+    if (hostname.includes("vibix") || hostname.includes("vids") || hostname.includes("vb")) return "Vibix (КП)";
+    if (hostname.includes("veoveo") || hostname.includes("veo")) return "Veoveo (КП)";
+    if (hostname.includes("kodik") || hostname.includes("kdk")) return "Kodik (КП)";
+    
+    let domainParts = hostname.replace("www.", "").split(".");
+    let mainDomain = domainParts[0];
+    if (mainDomain.length > 2) {
+      return "КП " + mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
+    }
+    return "Плеер (КП)";
+  } catch (e) {
+    return "Плеер (КП)";
+  }
+}
+
+// API для kp.apiget.ru / array_player.php (Kinopoisk Player)
+class KpApigetApi {
+  constructor(http) {
+    this._http = http;
+  }
+  async players(kinopoiskId, abort) {
+    let url = new URL("https://kp.apiget.ru/array_player.php");
+    let uidKp = "";
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    for (let i = 0; i < 32; i++) {
+      uidKp += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    let manifestData = {
+      "manifest_version": 3,
+      "name": "Kinopoisk Player - фильмы/сериалы",
+      "version": "16.3.0",
+      "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6IgiHmdoj2e2dq8mlC31K30rxGtuCpqkP/nZT76SVd9psyIq3bUYQRrQVmroRSdSB8b2jAhUxiXMIbPkWp+7v19hMwKdLf5UI3QowRK5bLEYmguP6/z+Qt6lVcDXOflgP4k3U0j6gvC0Ryd78Ko3O4I1en0cVIiSmTnCZfgSfugu1UO6O8ppyHohMkNMht7j2EDdightoeqGhIt33XTO5z5bABAQ82MVtPbJvIw4EMZbunLcw+aMxwnItrCYgw8Np8Un/InlrfduNAzQNiCgqaU3+WOycVPhvj3WqMVIi1pbq5SmPg6Xk94BqdyR5eQtzQ6ornROU8+KsRGSRTA0pQIDAQAB",
+      "description": ""
+    };
+
+    let html_code = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Фильм/Сериал на Кинопоиске</title>
+  <meta property="og:url" content="https://www.kinopoisk.ru/film/${kinopoiskId}/">
+  <link rel="canonical" href="https://www.kinopoisk.ru/film/${kinopoiskId}/" />
+</head>
+<body>
+  <div id="inlineFilmContainer" data-film-id="${kinopoiskId}"></div>
+</body>
+</html>`;
+
+    let data = new FormData();
+    data.append("id", kinopoiskId + "");
+    data.append("version_extension", "16.3.0");
+    data.append("Manifest_extension", JSON.stringify(manifestData));
+    data.append("uid", "");
+    data.append("yandex_login", "");
+    data.append("UID_KP", uidKp);
+    data.append("html_code", html_code);
+
+    let response = await this._http.fetch(url, {
+      method: "POST",
+      body: data,
+      signal: abort,
+      timeout: 8000,
+    });
+    if (!response.ok) throw new ResponseError(response);
+    let text = await response.text();
+    let resData;
+    try {
+      resData = JSON.parse(text);
+    } catch (e) {
+      throw new Error("KpApiget API: invalid JSON response");
+    }
+    if (resData.error !== 0 || !Array.isArray(resData.all_player)) {
+      return [];
+    }
+    return resData.all_player;
+  }
+}
+
 // API для Collaps (оставлен для обратной совместимости, не используется)
 class CollapsApi {
   constructor(http, token) {
@@ -988,10 +1220,11 @@ class CollapsApi {
 }
 // Основной класс Shikiplayer
 class Shikiplayer {
-  constructor(playerFactories, kodikApi, kinoboxApi) {
+  constructor(playerFactories, kodikApi, kinoboxApi, kpApi) {
     this._playerFactories = playerFactories;
     this._kodikApi = kodikApi;
     this._kinoboxApi = kinoboxApi;
+    this._kpApi = kpApi;
     // Создаем внешний контейнер
     this.element = document.createElement("div");
     this.element.className = "sp-outer-wrapper";
@@ -1001,7 +1234,12 @@ class Shikiplayer {
 <div class="sp-wrapper">
   <div class="sp-container">
     <div class="sp-header">
-      <div class="sp-title">Онлайн-просмотр</div>
+      <div class="sp-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sp-title-icon">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>Онлайн-просмотр</span>
+      </div>
       <div class="sp-dropdown">
         <div class="sp-dropdown-toggle">
           <span class="sp-selected-player">Выберите плеер</span>
@@ -1010,7 +1248,12 @@ class Shikiplayer {
       </div>
     </div>
     <div class="sp-viewer">
-      <div class="sp-loading-overlay"></div>
+      <div class="sp-loading-overlay">
+        <div class="sp-loading-content">
+          <div class="sp-loading-spinner"></div>
+          <div class="sp-loading-text">Загрузка видеоплеера...</div>
+        </div>
+      </div>
     </div>
   </div>
   <button class="sp-theater-close" title="Закрыть режим кинотеатра">
@@ -1057,7 +1300,7 @@ class Shikiplayer {
 
     // Обработчики событий для выпадающего списка
     this._dropdownToggle.addEventListener("click", () => {
-      this._dropdown.classList.toggle("open");
+       this._dropdown.classList.toggle("open");
     });
     // Закрытие выпадающего списка при клике вне его
     document.addEventListener("click", (e) => {
@@ -1123,10 +1366,10 @@ class Shikiplayer {
       incrementButton.click();
 
       // Добавляем визуальную обратную связь
-      this._episodeBtn.style.background = "var(--sp-success)";
+      this._episodeBtn.classList.add("success");
       setTimeout(() => {
-        this._episodeBtn.style.background = "";
-      }, 500);
+        this._episodeBtn.classList.remove("success");
+      }, 800);
 
       // ИСПРАВЛЕНИЕ: Увеличиваем задержку и добавляем несколько попыток обновления счетчика
       // Обновляем счетчик серий с увеличенной задержкой
@@ -1140,10 +1383,10 @@ class Shikiplayer {
       }, 2000);
     } else {
       // Если кнопка не найдена, показываем ошибку
-      this._episodeBtn.style.background = "var(--sp-error)";
+      this._episodeBtn.classList.add("error");
       setTimeout(() => {
-        this._episodeBtn.style.background = "";
-      }, 500);
+        this._episodeBtn.classList.remove("error");
+      }, 800);
     }
   }
 
@@ -1181,9 +1424,9 @@ class Shikiplayer {
 
     // Если значение изменилось, добавляем анимацию
     if (oldValue !== rateText) {
-      episodeCount.style.transform = "scale(1.2)";
+      episodeCount.classList.add("sp-pulse");
       setTimeout(() => {
-        episodeCount.style.transform = "scale(1)";
+        episodeCount.classList.remove("sp-pulse");
       }, 300);
     }
   }
@@ -1308,16 +1551,25 @@ class Shikiplayer {
     }
 
     if (kinopoiskId) {
+      // Запускаем запросы к Kinobox API и KP API параллельно
+      let kinoboxPromise = this._kinoboxApi.players(kinopoiskId, abort).catch((e) => {
+        console.error("Kinobox API error:", e);
+        return [];
+      });
+      let kpPromise = this._kpApi ? this._kpApi.players(kinopoiskId, abort).catch((e) => {
+        console.error("KP API error:", e);
+        return [];
+      }) : Promise.resolve([]);
+
       try {
-        // Делаем запрос к Kinobox API для получения всех плееров
-        let kinoboxPlayers = await this._kinoboxApi.players(kinopoiskId, abort);
+        let [kinoboxPlayers, kpPlayers] = await Promise.all([kinoboxPromise, kpPromise]);
 
         // Создаём фиктивный kodikResult если Kodik API не сработал
         if (!kodikResult) {
           kodikResult = { kinopoisk_id: kinopoiskId };
         }
 
-        // Создаем все плееры, используя полученные данные
+        // Создаем все базовые плееры, используя полученные данные из Kinobox
         for (let factory of this._playerFactories) {
           if (factory.name === "Kodik") continue;
 
@@ -1354,8 +1606,52 @@ class Shikiplayer {
             item.classList.remove("loading");
           }
         }
+
+        // Динамически регистрируем и выводим плееры из базы Кинопоиска (lumex и другие)
+        let lumexCount = 0;
+        if (kpPlayers && kpPlayers.length > 0) {
+          kpPlayers.forEach((url) => {
+            let baseName = getPlayerNameFromUrl(url);
+            if (baseName.toLowerCase().includes("кп api") || baseName.toLowerCase().includes("kp api")) return;
+
+            if (baseName === "Lumex") {
+              lumexCount++;
+              if (lumexCount === 1) {
+                baseName = "Kinopoisk";
+              } else if (lumexCount === 2) {
+                baseName = "Lumex";
+              }
+            }
+
+            let finalName = baseName;
+            let counter = 2;
+
+            // Обеспечиваем абсолютную уникальность имени плеера в списке
+            while (this._playerInstances.has(finalName)) {
+              finalName = `${baseName} ${counter}`;
+              counter++;
+            }
+
+            let player = new IframePlayer(url, finalName);
+            this._playerInstances.set(finalName, player);
+
+            // Создаем и стилизуем элемент в выпадающем списке
+            let item = document.createElement("div");
+            item.className = "sp-dropdown-item";
+            item.dataset.playerName = finalName;
+            item.innerHTML = `
+ ${finalName}
+<span class="sp-status-indicator online"></span>
+            `;
+            item.addEventListener("click", () => {
+              this.switchPlayer(finalName, player);
+              this._dropdown.classList.remove("open");
+            });
+            this._dropdownMenu.appendChild(item);
+          });
+        }
       } catch (e) {
-        console.error("Kinobox API error:", e);
+        console.error("General API error:", e);
         for (let factory of this._playerFactories) {
           if (factory.name === "Kodik") continue;
           let item = this._dropdownMenu.querySelector(
@@ -1471,14 +1767,12 @@ async function startShikiplayer() {
   let http = new GMHttp();
   let kodikApi = new KodikApi(http, kodikToken);
   let kinoboxApi = new KinoboxApi(http);
+  let kpApi = new KpApigetApi(http);
   let factories = [
     new KodikFactory(kodikUid, kodikApi),
     new SimpleFactory("Alloha"),
     new SimpleFactory("Collaps"),
     new SimpleFactory("Turbo"),
-    new SimpleFactory("Lumex"),
-    new SimpleFactory("Veoveo"),
-    new SimpleFactory("Vibix"),
   ];
   let shikiplayer = null;
   // Функция инициализации плеера
@@ -1486,7 +1780,7 @@ async function startShikiplayer() {
     if (shikiplayer) {
       shikiplayer.dispose(); // Очищаем текущий плеер
     }
-    shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi);
+    shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi, kpApi);
     await shikiplayer.start(new AbortController().signal);
   }
   // Первичный запуск
