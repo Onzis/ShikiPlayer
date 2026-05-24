@@ -1,14 +1,16 @@
 # ShikiPlayer
+ShikiPlayer — это пользовательский скрипт, который встраивает видеоплеер непосредственно на сайт Shikimori, позволяя смотреть аниме прямо на странице без необходимости покидать платформу. Поддерживает несколько источников видео (Turbo, Lumex, Alloha, Kodik) с автоматическим переключением на резервный источник в случае сбоя и выпадающим меню для ручного выбора.
 
 [![Установить](https://img.shields.io/badge/Установить-Tampermonkey-00ad5f?style=flat-square&logo=tampermonkey)](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js)
 [![Версия](https://img.shields.io/badge/версия-1.75-blue?style=flat-square)](https://github.com/Onzis/ShikiPlayer)
+[![GitHub stars](https://img.shields.io/github/stars/Onzis/ShikiPlayer?label=Звёзды&style=flat-square)](https://github.com/Onzis/ShikiPlayer/stargazers)
 
-ShikiPlayer — это пользовательский скрипт, который встраивает видеоплеер непосредственно на сайт Shikimori, позволяя смотреть аниме прямо на странице без необходимости покидать платформу. Поддерживает несколько источников видео (Turbo, Lumex, Alloha, Kodik) с автоматическим переключением на резервный источник в случае сбоя и выпадающим меню для ручного выбора.
+<img width="910" height="652" alt="image" src="https://github.com/user-attachments/assets/653d47aa-4151-415d-b62b-0530f6081a59" />
 
+# Быстрые ссылки
 - [Возможности](#возможности)
 - [Установка](#установка)
 - [Использование](#использование)
-- [Скриншот](#скриншот)
 - [Поддерживаемые плееры](#поддерживаемые-плееры)
 - [Требования](#требования)
 - [Совместимость](#совместимость)
@@ -39,12 +41,6 @@ ShikiPlayer — это пользовательский скрипт, котор
 - Используйте выпадающее меню в заголовке плеера, чтобы переключаться между Turbo, Lumex, Alloha или Kodik.
 - Если плеер не загружается, скрипт автоматически пробует следующий доступный источник и показывает уведомление.
 - Уведомления появляются внизу экрана и автоматически исчезают через несколько секунд, либо их можно закрыть вручную.
-
-## Скриншот
-<img width="918" height="704" alt="image" src="https://github.com/user-attachments/assets/2b07aa28-6792-4a03-a8e1-6a57c86801f4" />
-<img width="1177" height="848" alt="image" src="https://github.com/user-attachments/assets/6760805c-1f74-4b64-af7f-61ca004bfef3" />
-
-
 
 ## Поддерживаемые плееры
 1. **Turbo**: Быстрый и легкий, используется по умолчанию.
