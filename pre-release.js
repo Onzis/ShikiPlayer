@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.73
+// @version         1.74
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -1130,48 +1130,23 @@ class KinoboxApi {
     this._http = http;
   }
   async players(kinopoisk, abort) {
-    let url = new URL("https://api.kinobox.tv/api/players");
+    let url = new URL("https://fbphdplay.top/api/players");
     url.searchParams.set("kinopoisk", kinopoisk + "");
     let response = await this._http.fetch(url, {
+      headers: {
+        Origin: "https://fbphdplay.top",
+      },
       signal: abort,
       timeout: 5000,
     });
     if (!response.ok) throw new ResponseError(response);
     let text = await response.text();
     let data = JSON.parse(text);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
   }
 }
 
-// Поиск имени плеера по URL (для интеграции источников из Kinopoisk Player)
-function getPlayerNameFromUrl(url) {
-  try {
-    let finalUrl = url;
-    if (finalUrl && finalUrl.startsWith("//")) {
-      finalUrl = "https:" + finalUrl;
-    }
-    let hostname = new URL(finalUrl).hostname.toLowerCase();
-    if (hostname.includes("lumex") || hostname.includes("lmx") || hostname.includes("temptcdn") || hostname.includes("ruapi")) return "Lumex";
-    if (hostname.includes("alloha") || hostname.includes("shall") || hostname.includes("algonoew") || hostname.includes("apbugall") || hostname.includes("stravers")) return "Alloha (КП)";
-    if (hostname.includes("collaps") || hostname.includes("apicollaps") || hostname.includes("api.top")) return "Collaps (КП)";
-    if (hostname.includes("turbo") || hostname.includes("trb")) return "Turbo (КП)";
-    if (hostname.includes("ustore") || hostname.includes("ustr")) return "Ustore (КП)";
-    if (hostname.includes("vibix") || hostname.includes("vids") || hostname.includes("vb")) return "Vibix (КП)";
-    if (hostname.includes("veoveo") || hostname.includes("veo")) return "Veoveo (КП)";
-    if (hostname.includes("kodik") || hostname.includes("kdk")) return "Kodik (КП)";
-    
-    let domainParts = hostname.replace("www.", "").split(".");
-    let mainDomain = domainParts[0];
-    if (mainDomain.length > 2) {
-      return "КП " + mainDomain.charAt(0).toUpperCase() + mainDomain.slice(1);
-    }
-    return "Плеер (КП)";
-  } catch (e) {
-    return "Плеер (КП)";
-  }
-}
-
-// API для kp.apiget.ru / array_player.php (Kinopoisk Player)
+// API для KpApiget
 class KpApigetApi {
   constructor(http) {
     this._http = http;
@@ -1205,7 +1180,7 @@ class KpApigetApi {
 </body>
 </html>`;
 
-    let data = new FormData();
+    let data = new URLSearchParams();
     data.append("id", kinopoiskId + "");
     data.append("version_extension", "16.3.0");
     data.append("Manifest_extension", JSON.stringify(manifestData));
@@ -1232,6 +1207,26 @@ class KpApigetApi {
       return [];
     }
     return resData.all_player;
+  }
+}
+
+
+// Утилита для получения имени плеера из URL
+function getPlayerNameFromUrl(url) {
+  if (!url) return "Unknown";
+  let link = url.toLowerCase();
+  if (link.includes("lumex")) return "Lumex";
+  if (link.includes("vibix") || link.includes("vidio.xyz")) return "Vibix";
+  if (link.includes("veoveo")) return "Veoveo";
+  if (link.includes("alloha")) return "Alloha";
+  if (link.includes("collaps")) return "Collaps";
+  if (link.includes("turbo")) return "Turbo";
+  if (link.includes("ruapi")) return "Kinopoisk";
+  try {
+      let domain = new URL(url).hostname.replace("www.", "");
+      return domain.split(".")[0];
+  } catch(e) {
+      return "Unknown";
   }
 }
 
@@ -1666,20 +1661,11 @@ class Shikiplayer {
         }
 
         // Динамически регистрируем и выводим плееры из базы Кинопоиска (lumex и другие)
-        let lumexCount = 0;
         if (kpPlayers && kpPlayers.length > 0) {
           kpPlayers.forEach((url) => {
             let baseName = getPlayerNameFromUrl(url);
             if (baseName.toLowerCase().includes("кп api") || baseName.toLowerCase().includes("kp api")) return;
-
-            if (baseName === "Lumex") {
-              lumexCount++;
-              if (lumexCount === 1) {
-                baseName = "Kinopoisk";
-              } else if (lumexCount === 2) {
-                baseName = "Lumex";
-              }
-            }
+            if (baseName.toLowerCase() === "api" || baseName.toLowerCase() === "unknown") return;
 
             let finalName = baseName;
             let counter = 2;
@@ -1831,7 +1817,7 @@ async function startShikiplayer() {
     new KodikFactory(kodikUid, kodikApi),
     new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
-    new SimpleFactory("Turbo"),
+    new SimpleFactory("Turbo")
   ];
   let shikiplayer = null;
   // Функция инициализации плеера
