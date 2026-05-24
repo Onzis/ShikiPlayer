@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.72
+// @version         1.73
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -15,6 +15,9 @@
 // @connect         api.kinobox.tv
 // @connect         fbphdplay.top
 // @connect         kp.apiget.ru
+// @connect         api.alloha.tv
+// @connect         api.apbugall.org
+// @connect         theatre.stravers.live
 // @match           *://shikimori.io/*
 // @match           *://beggins-as.pljjalgo.online/*
 // @match           *://beggins-as.allarknow.online/*
@@ -932,7 +935,6 @@ class KodikPlayer extends PlayerBase {
     this._results = results;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
-    this.element.referrerPolicy = "no-referrer";
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
     this._translation = results[0] || new Error("No translation found");
@@ -1010,7 +1012,6 @@ class IframePlayer extends PlayerBase {
     this.name = name;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
-    this.element.referrerPolicy = "no-referrer";
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
     
@@ -1030,6 +1031,66 @@ class SimpleFactory {
     if (!kodikResult?.kinopoisk_id) return null;
     const p = kinoboxPlayers.find((x) => x.type === this.name);
     return p?.iframeUrl ? new IframePlayer(p.iframeUrl, this.name) : null;
+  }
+}
+// API для Alloha
+class AllohaApi {
+  constructor(http, token, baseUrl = "https://theatre.stravers.live") {
+    this._http = http;
+    this._token = token;
+    this._baseUrl = baseUrl;
+  }
+  async getIframeUrl(kinopoiskId, abort) {
+    const endpoints = [
+      {
+        url: `https://api.apbugall.org/?token=${this._token}&kp=${kinopoiskId}`,
+        method: "POST"
+      },
+      {
+        url: `https://api.alloha.tv/?token=${this._token}&kp=${kinopoiskId}`,
+        method: "GET"
+      },
+      {
+        url: `${this._baseUrl}/?token=${this._token}&kp=${kinopoiskId}`,
+        method: "GET"
+      }
+    ];
+    for (let end of endpoints) {
+      try {
+        let response = await this._http.fetch(end.url, {
+          method: end.method,
+          signal: abort,
+          timeout: 5000,
+        });
+        if (response.ok) {
+          let text = await response.text();
+          let data = JSON.parse(text);
+          if (data && data.status === "success" && data.data) {
+            const iframeUrl = data.data.iframe || data.data.iframe_url;
+            if (iframeUrl) {
+              return iframeUrl;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`Error querying Alloha API at ${end.url} (${end.method}):`, e);
+      }
+    }
+    // Fallback: Direct iframe embed
+    return `${this._baseUrl}/?token=${this._token}&kp=${kinopoiskId}`;
+  }
+}
+// AllohaFactory — фабрика для создания Alloha плеера через AllohaApi
+class AllohaFactory {
+  constructor(api) {
+    this._api = api;
+  }
+  name = "Alloha";
+  async create(kodikResult, kinoboxPlayers, abort) {
+    if (!kodikResult?.kinopoisk_id) return null;
+    let url = await this._api.getIframeUrl(kodikResult.kinopoisk_id, abort);
+    if (!url) return null;
+    return new IframePlayer(url, this.name);
   }
 }
 // API для Kodik
@@ -1069,19 +1130,16 @@ class KinoboxApi {
     this._http = http;
   }
   async players(kinopoisk, abort) {
-    let url = new URL("https://fbphdplay.top/api/players");
+    let url = new URL("https://api.kinobox.tv/api/players");
     url.searchParams.set("kinopoisk", kinopoisk + "");
     let response = await this._http.fetch(url, {
-      headers: {
-        Origin: "https://fbphdplay.top",
-      },
       signal: abort,
       timeout: 5000,
     });
     if (!response.ok) throw new ResponseError(response);
     let text = await response.text();
     let data = JSON.parse(text);
-    return Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data : [];
   }
 }
 
@@ -1094,7 +1152,7 @@ function getPlayerNameFromUrl(url) {
     }
     let hostname = new URL(finalUrl).hostname.toLowerCase();
     if (hostname.includes("lumex") || hostname.includes("lmx") || hostname.includes("temptcdn") || hostname.includes("ruapi")) return "Lumex";
-    if (hostname.includes("alloha") || hostname.includes("shall") || hostname.includes("algonoew")) return "Alloha (КП)";
+    if (hostname.includes("alloha") || hostname.includes("shall") || hostname.includes("algonoew") || hostname.includes("apbugall") || hostname.includes("stravers")) return "Alloha (КП)";
     if (hostname.includes("collaps") || hostname.includes("apicollaps") || hostname.includes("api.top")) return "Collaps (КП)";
     if (hostname.includes("turbo") || hostname.includes("trb")) return "Turbo (КП)";
     if (hostname.includes("ustore") || hostname.includes("ustr")) return "Ustore (КП)";
@@ -1579,7 +1637,7 @@ class Shikiplayer {
           if (!item) continue;
 
           try {
-            let player = factory.create(kodikResult, kinoboxPlayers);
+            let player = await factory.create(kodikResult, kinoboxPlayers, abort);
             item.classList.remove("loading");
             if (!player) {
               item
@@ -1768,9 +1826,10 @@ async function startShikiplayer() {
   let kodikApi = new KodikApi(http, kodikToken);
   let kinoboxApi = new KinoboxApi(http);
   let kpApi = new KpApigetApi(http);
+  let allohaApi = new AllohaApi(http, "45e20a5f584becf7a64dffb7174ddf");
   let factories = [
     new KodikFactory(kodikUid, kodikApi),
-    new SimpleFactory("Alloha"),
+    new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
     new SimpleFactory("Turbo"),
   ];
