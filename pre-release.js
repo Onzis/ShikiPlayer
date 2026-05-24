@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.74
+// @version         1.75
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -343,7 +343,7 @@ const darkThemeCSS = `
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 42px !important;
+  height: 48px !important;
   padding: 0 16px !important;
   background: var(--sp-bg-tertiary) !important;
   border: 1px solid var(--sp-border-color) !important;
@@ -359,13 +359,15 @@ const darkThemeCSS = `
 }
 
 .sp-theater-btn {
-  width: 42px !important;
+  width: 48px !important;
   padding: 0 !important;
 }
 
 .sp-episode-btn {
-  flex-grow: 1 !important;
-  max-width: 240px !important;
+  flex-direction: column !important;
+  width: 48px !important;
+  padding: 4px !important;
+  gap: 2px !important;
 }
 
 .sp-theater-btn:hover,
@@ -384,8 +386,8 @@ const darkThemeCSS = `
 
 .sp-theater-btn svg,
 .sp-episode-btn svg {
-  width: 18px !important;
-  height: 18px !important;
+  width: 16px !important;
+  height: 16px !important;
   flex-shrink: 0 !important;
   color: var(--sp-text-secondary) !important;
   transition: color var(--sp-transition-fast) !important;
@@ -430,11 +432,11 @@ const darkThemeCSS = `
   background: var(--sp-bg-primary) !important;
   border: 1px solid var(--sp-border-color) !important;
   color: var(--sp-accent) !important;
-  font-size: 11px !important;
+  font-size: 9px !important;
   font-weight: 700 !important;
-  padding: 2px 8px !important;
-  border-radius: 20px !important;
-  margin-left: 4px !important;
+  padding: 1px 6px !important;
+  border-radius: 12px !important;
+  margin-left: 0 !important;
   display: inline-block !important;
   line-height: normal !important;
   transition: all 0.2s ease !important;
@@ -592,15 +594,14 @@ const darkThemeCSS = `
   }
 
   .sp-button-container {
-    flex-direction: column !important;
+    flex-direction: row !important;
     gap: var(--sp-spacing-sm) !important;
     padding: var(--sp-spacing-md) !important;
   }
 
   .sp-theater-btn,
   .sp-episode-btn {
-    width: 100% !important;
-    max-width: none !important;
+    width: 48px !important;
   }
 }
 
@@ -1012,6 +1013,9 @@ class IframePlayer extends PlayerBase {
     this.name = name;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
+    this.element.setAttribute("allow", "autoplay *; fullscreen *; picture-in-picture *; xr-spatial-tracking *; clipboard-write *");
+    this.element.setAttribute("frameborder", "0");
+    this.element.setAttribute("referrerpolicy", "origin");
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
     
@@ -1215,6 +1219,7 @@ class KpApigetApi {
 function getPlayerNameFromUrl(url) {
   if (!url) return "Unknown";
   let link = url.toLowerCase();
+  
   if (link.includes("lumex")) return "Lumex";
   if (link.includes("vibix") || link.includes("vidio.xyz")) return "Vibix";
   if (link.includes("veoveo")) return "Veoveo";
@@ -1222,6 +1227,8 @@ function getPlayerNameFromUrl(url) {
   if (link.includes("collaps")) return "Collaps";
   if (link.includes("turbo")) return "Turbo";
   if (link.includes("ruapi")) return "Kinopoisk";
+  if (link.includes("kinopoisk")) return "Lumex";
+  
   try {
       let domain = new URL(url).hostname.replace("www.", "");
       return domain.split(".")[0];
