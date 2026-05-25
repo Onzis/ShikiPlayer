@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75
+// @version         1.75.5
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -15,6 +15,7 @@
 // @connect         api.kinobox.tv
 // @connect         fbphdplay.top
 // @connect         kp.apiget.ru
+// @connect         apiget.ru
 // @connect         api.alloha.tv
 // @connect         api.apbugall.org
 // @connect         theatre.stravers.live
@@ -792,7 +793,7 @@ class GMResponse {
     this.statusText = statusText || "";
     this.ok = status >= 200 && status <= 299;
     this._text = responseText || "";
-    
+
     let parsedHeaders = {};
     if (Array.isArray(responseHeaders)) {
       for (let item of responseHeaders) {
@@ -833,7 +834,7 @@ class GMHttp {
       throw new Error(`HTTP method ${requestMethod} is not supported`);
     }
     let requestUrl = input.toString();
-    
+
     let requestBody = init?.body;
     let requestHeaders = init?.headers
       ? Object.fromEntries(new Headers(init.headers))
@@ -971,7 +972,13 @@ class KodikPlayer extends PlayerBase {
     this.rebuildIFrameSrc();
   }
   rebuildIFrameSrc() {
-    let src = new URL(`https:${this._translation.link}`);
+    let link = this._translation.link;
+    if (link.startsWith("//")) {
+      link = "https:" + link;
+    } else if (!link.startsWith("http://") && !link.startsWith("https://")) {
+      link = "https://" + link;
+    }
+    let src = new URL(link);
     src.searchParams.set("uid", this.uid);
     src.searchParams.set("episode", this._episode + "");
     src.searchParams.set("start_from", this._time + "");
@@ -1001,9 +1008,16 @@ class KodikFactory {
   }
   name = "Kodik";
   async create(animeId, abort) {
-    let results = await this._api.search(animeId, abort);
-    if (results.length === 0) return null;
-    return new KodikPlayer(this.uid, results);
+    try {
+      let results = await this._api.search(animeId, abort);
+      if (results && results.length > 0) {
+        return new KodikPlayer(this.uid, results);
+      }
+    } catch (e) {
+      console.error("Kodik search API unsuccessful:", e);
+    }
+    // Ререзвный вариант: если поиск API пустой или упал, возвращаем iframe с поиском по shikimori_id
+    return new IframePlayer(`https://kodikplayer.com/find?shikimori_id=${animeId}`, this.name);
   }
 }
 // IframePlayer — универсальный плеер для Kinobox источников
@@ -1018,10 +1032,14 @@ class IframePlayer extends PlayerBase {
     this.element.setAttribute("referrerpolicy", "origin");
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
-    
+
     let finalUrl = url;
-    if (finalUrl && finalUrl.startsWith("//")) {
-      finalUrl = "https:" + finalUrl;
+    if (finalUrl) {
+      if (finalUrl.startsWith("//")) {
+        finalUrl = "https:" + finalUrl;
+      } else if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+        finalUrl = "https://" + finalUrl;
+      }
     }
     this.element.src = finalUrl;
   }
@@ -1033,8 +1051,29 @@ class SimpleFactory {
   }
   create(kodikResult, kinoboxPlayers) {
     if (!kodikResult?.kinopoisk_id) return null;
-    const p = kinoboxPlayers.find((x) => x.type === this.name);
-    return p?.iframeUrl ? new IframePlayer(p.iframeUrl, this.name) : null;
+
+    // Поддержка синонимов названий плееров
+    let targetNames = [this.name.toLowerCase()];
+    if (this.name.toLowerCase() === "gendit") {
+      targetNames.push("gencit");
+    } else if (this.name.toLowerCase() === "gencit") {
+      targetNames.push("gendit");
+    }
+
+    const p = kinoboxPlayers.find((x) => targetNames.includes(x.type?.toLowerCase()));
+    if (p && p.iframeUrl) {
+      return new IframePlayer(p.iframeUrl, this.name);
+    }
+
+    // Резервный (fallback) вариант с прямой ссылкой, если плеер не вернулся от API
+    if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit") {
+      return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name);
+    }
+    if (this.name.toLowerCase() === "flixcdn") {
+      return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name);
+    }
+
+    return null;
   }
 }
 // API для Alloha
@@ -1154,8 +1193,11 @@ class KinoboxApi {
 class KpApigetApi {
   constructor(http) {
     this._http = http;
+    this._cache = new Map();
   }
   async players(kinopoiskId, abort) {
+    if (this._cache.has(kinopoiskId)) return this._cache.get(kinopoiskId);
+
     let url = new URL("https://kp.apiget.ru/array_player.php");
     let uidKp = "";
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1207,10 +1249,14 @@ class KpApigetApi {
     } catch (e) {
       throw new Error("KpApiget API: invalid JSON response");
     }
-    if (resData.error !== 0 || !Array.isArray(resData.all_player)) {
-      return [];
+
+    let result = [];
+    if (resData.error === 0 && Array.isArray(resData.all_player)) {
+      result = resData.all_player;
     }
-    return resData.all_player;
+
+    this._cache.set(kinopoiskId, result);
+    return result;
   }
 }
 
@@ -1219,7 +1265,7 @@ class KpApigetApi {
 function getPlayerNameFromUrl(url) {
   if (!url) return "Unknown";
   let link = url.toLowerCase();
-  
+
   if (link.includes("lumex")) return "Lumex";
   if (link.includes("vibix") || link.includes("vidio.xyz")) return "Vibix";
   if (link.includes("veoveo")) return "Veoveo";
@@ -1228,10 +1274,18 @@ function getPlayerNameFromUrl(url) {
   if (link.includes("turbo")) return "Turbo";
   if (link.includes("ruapi")) return "Kinopoisk";
   if (link.includes("kinopoisk")) return "Lumex";
-  
+
+  // Добавляем новые плееры: Gendit / Gencit, Flixcdn, Kodik
+  if (link.includes("horsez.org") || link.includes("ylitron.pro") || link.includes("gendit") || link.includes("gencit")) return "Gendit";
+  if (link.includes("tarantino.factorios.live") || link.includes("factorios.live") || link.includes("kinohd.co") || link.includes("flixcdn")) return "Flixcdn";
+  if (link.includes("kodik")) return "Kodik";
+
   try {
       let domain = new URL(url).hostname.replace("www.", "");
-      return domain.split(".")[0];
+      let rawName = domain.split(".")[0];
+      if (rawName === "horsez" || rawName === "ylitron") return "Gendit";
+      if (rawName === "factorios" || rawName === "kinohd") return "Flixcdn";
+      return rawName.charAt(0).toUpperCase() + rawName.slice(1);
   } catch(e) {
       return "Unknown";
   }
@@ -1667,6 +1721,77 @@ class Shikiplayer {
           }
         }
 
+        // Динамически регистрируем и выводим все остальные плееры из Kinobox (из Tape Operator)
+        if (kinoboxPlayers && kinoboxPlayers.length > 0) {
+          kinoboxPlayers.forEach((p) => {
+            if (!p || !p.type || !p.iframeUrl) return;
+
+            let finalUrl = p.iframeUrl;
+            if (finalUrl.startsWith("//")) {
+              finalUrl = "https:" + finalUrl;
+            }
+
+            // Если такой плеер уже зарегистрирован и работающий
+            if (this._playerInstances.has(p.type)) return;
+
+            // Предотвращаем дублирование дефолтных
+            let baseName = p.type;
+            let normName = baseName.toLowerCase();
+            if (normName === "alloha" && this._playerInstances.has("Alloha")) return;
+            if (normName === "collaps" && this._playerInstances.has("Collaps")) return;
+            if (normName === "kodik" && this._playerInstances.has("Kodik")) return;
+            if (normName === "turbo" && this._playerInstances.has("Turbo")) return;
+            if (normName === "gendit" && this._playerInstances.has("Gendit")) return;
+            if (normName === "gencit" && this._playerInstances.has("Gendit")) return;
+            if (normName === "flixcdn" && this._playerInstances.has("Flixcdn")) return;
+
+            // Если инстанса нет, но пункт меню уже есть (для заводского плеера который завершился офлайн)
+            let existingItem = this._dropdownMenu.querySelector(`[data-player-name='${p.type}']`);
+            if (existingItem) {
+              let player = new IframePlayer(finalUrl, p.type);
+              this._playerInstances.set(p.type, player);
+
+              existingItem.classList.remove("loading");
+              let indicator = existingItem.querySelector(".sp-status-indicator");
+              if (indicator) {
+                indicator.className = "sp-status-indicator online";
+              }
+              // Перезаписываем событие клика
+              let newItem = existingItem.cloneNode(true);
+              newItem.addEventListener("click", () => {
+                this.switchPlayer(p.type, player);
+                this._dropdown.classList.remove("open");
+              });
+              existingItem.parentNode.replaceChild(newItem, existingItem);
+              return;
+            }
+
+            // Пропускаем неопределенные названия
+            if (["api", "api2", "unknown"].includes(normName)) return;
+
+            let displayName = p.type;
+            if (normName === "gencit" || normName === "gendit") displayName = "Gendit";
+            if (normName === "flixcdn") displayName = "Flixcdn";
+
+            let player = new IframePlayer(finalUrl, displayName);
+            this._playerInstances.set(displayName, player);
+
+            // Создаем и добавляем элемент в меню выпадающего списка
+            let item = document.createElement("div");
+            item.className = "sp-dropdown-item";
+            item.dataset.playerName = displayName;
+            item.innerHTML = `
+ ${displayName}
+<span class="sp-status-indicator online"></span>
+            `;
+            item.addEventListener("click", () => {
+              this.switchPlayer(displayName, player);
+              this._dropdown.classList.remove("open");
+            });
+            this._dropdownMenu.appendChild(item);
+          });
+        }
+
         // Динамически регистрируем и выводим плееры из базы Кинопоиска (lumex и другие)
         if (kpPlayers && kpPlayers.length > 0) {
           kpPlayers.forEach((url) => {
@@ -1682,6 +1807,8 @@ class Shikiplayer {
               finalName = `${baseName} ${counter}`;
               counter++;
             }
+
+            if (["api2", "lumex 2"].includes(finalName.toLowerCase())) return;
 
             let player = new IframePlayer(url, finalName);
             this._playerInstances.set(finalName, player);
@@ -1811,7 +1938,7 @@ async function startAllohaHelper() {
 }
 // Запуск Shikiplayer с поддержкой Turbolinks
 async function startShikiplayer() {
-  const allowedHosts = ["shikimori.one", "shikimori.me", "shikimori.io", "shiki.one"];
+  const allowedHosts = ["shikimori.io"];
   if (!allowedHosts.includes(location.hostname)) return;
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
   const kodikUid = "";
@@ -1824,6 +1951,8 @@ async function startShikiplayer() {
     new KodikFactory(kodikUid, kodikApi),
     new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
+    new SimpleFactory("Gendit"),
+    new SimpleFactory("Flixcdn"),
     new SimpleFactory("Turbo")
   ];
   let shikiplayer = null;
