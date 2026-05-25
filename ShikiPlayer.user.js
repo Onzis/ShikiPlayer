@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.6
+// @version         1.75.7
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -1961,6 +1961,7 @@ async function startAllohaHelper() {
 async function startShikiplayer() {
   const allowedHosts = ["shikimori.io"];
   if (!allowedHosts.includes(location.hostname)) return;
+  
   const kodikToken = "a0457eb45312af80bbb9f3fb33de3e93";
   const kodikUid = "";
   let http = new GMHttp();
@@ -1976,15 +1977,22 @@ async function startShikiplayer() {
     new SimpleFactory("Flixcdn"),
     new SimpleFactory("Turbo")
   ];
+
   let shikiplayer = null;
   // Функция инициализации плеера
   async function initializePlayer() {
     if (shikiplayer) {
       shikiplayer.dispose(); // Очищаем текущий плеер
+      shikiplayer = null;
     }
+    
+    // Перепроверяем URL при каждом событии turbolinks:load
+    if (!location.pathname.startsWith("/animes/")) return;
+
     shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi, kpApi);
     await shikiplayer.start(new AbortController().signal);
   }
+
   // Первичный запуск
   initializePlayer();
   // Обработка события Turbolinks
