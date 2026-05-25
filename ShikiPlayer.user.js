@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.1
+// @version         1.75.4
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -15,6 +15,7 @@
 // @connect         api.kinobox.tv
 // @connect         fbphdplay.top
 // @connect         kp.apiget.ru
+// @connect         apiget.ru
 // @connect         api.alloha.tv
 // @connect         api.apbugall.org
 // @connect         theatre.stravers.live
@@ -792,7 +793,7 @@ class GMResponse {
     this.statusText = statusText || "";
     this.ok = status >= 200 && status <= 299;
     this._text = responseText || "";
-    
+
     let parsedHeaders = {};
     if (Array.isArray(responseHeaders)) {
       for (let item of responseHeaders) {
@@ -833,7 +834,7 @@ class GMHttp {
       throw new Error(`HTTP method ${requestMethod} is not supported`);
     }
     let requestUrl = input.toString();
-    
+
     let requestBody = init?.body;
     let requestHeaders = init?.headers
       ? Object.fromEntries(new Headers(init.headers))
@@ -1018,7 +1019,7 @@ class IframePlayer extends PlayerBase {
     this.element.setAttribute("referrerpolicy", "origin");
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
-    
+
     let finalUrl = url;
     if (finalUrl && finalUrl.startsWith("//")) {
       finalUrl = "https:" + finalUrl;
@@ -1154,8 +1155,11 @@ class KinoboxApi {
 class KpApigetApi {
   constructor(http) {
     this._http = http;
+    this._cache = new Map();
   }
   async players(kinopoiskId, abort) {
+    if (this._cache.has(kinopoiskId)) return this._cache.get(kinopoiskId);
+
     let url = new URL("https://kp.apiget.ru/array_player.php");
     let uidKp = "";
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1207,10 +1211,14 @@ class KpApigetApi {
     } catch (e) {
       throw new Error("KpApiget API: invalid JSON response");
     }
-    if (resData.error !== 0 || !Array.isArray(resData.all_player)) {
-      return [];
+
+    let result = [];
+    if (resData.error === 0 && Array.isArray(resData.all_player)) {
+      result = resData.all_player;
     }
-    return resData.all_player;
+
+    this._cache.set(kinopoiskId, result);
+    return result;
   }
 }
 
@@ -1219,7 +1227,7 @@ class KpApigetApi {
 function getPlayerNameFromUrl(url) {
   if (!url) return "Unknown";
   let link = url.toLowerCase();
-  
+
   if (link.includes("lumex")) return "Lumex";
   if (link.includes("vibix") || link.includes("vidio.xyz")) return "Vibix";
   if (link.includes("veoveo")) return "Veoveo";
@@ -1228,7 +1236,7 @@ function getPlayerNameFromUrl(url) {
   if (link.includes("turbo")) return "Turbo";
   if (link.includes("ruapi")) return "Kinopoisk";
   if (link.includes("kinopoisk")) return "Lumex";
-  
+
   try {
       let domain = new URL(url).hostname.replace("www.", "");
       return domain.split(".")[0];
@@ -1682,6 +1690,8 @@ class Shikiplayer {
               finalName = `${baseName} ${counter}`;
               counter++;
             }
+
+            if (["api2", "lumex 2"].includes(finalName.toLowerCase())) return;
 
             let player = new IframePlayer(url, finalName);
             this._playerInstances.set(finalName, player);
