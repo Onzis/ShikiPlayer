@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.5
+// @version         1.75.6
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -1046,7 +1046,7 @@ class SimpleFactory {
   }
   create(kodikResult, kinoboxPlayers) {
     if (!kodikResult?.kinopoisk_id) return null;
-
+    
     // Поддержка синонимов названий плееров
     let targetNames = [this.name.toLowerCase()];
     if (this.name.toLowerCase() === "gendit") {
@@ -1054,7 +1054,7 @@ class SimpleFactory {
     } else if (this.name.toLowerCase() === "gencit") {
       targetNames.push("gendit");
     }
-
+    
     const p = kinoboxPlayers.find((x) => targetNames.includes(x.type?.toLowerCase()));
     if (p && p.iframeUrl) {
       let refPolicy = "origin";
@@ -1063,7 +1063,7 @@ class SimpleFactory {
       }
       return new IframePlayer(p.iframeUrl, this.name, refPolicy);
     }
-
+    
     // Резервный (fallback) вариант с прямой ссылкой, если плеер не вернулся от API
     if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit") {
       return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
@@ -1071,7 +1071,7 @@ class SimpleFactory {
     if (this.name.toLowerCase() === "flixcdn") {
       return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
     }
-
+    
     return null;
   }
 }
@@ -1263,27 +1263,41 @@ class KpApigetApi {
 // Утилита для получения имени плеера из URL
 function getPlayerNameFromUrl(url) {
   if (!url) return "Unknown";
+  
   let link = url.toLowerCase();
+  try {
+    let parsedUrl = new URL(url);
+    let innerLink = parsedUrl.searchParams.get("link") || parsedUrl.searchParams.get("url");
+    if (innerLink) {
+      link = innerLink.toLowerCase();
+    }
+  } catch (e) {}
 
   if (link.includes("lumex")) return "Lumex";
-  if (link.includes("vibix") || link.includes("vidio.xyz")) return "Vibix";
+  if (link.includes("vibix") || link.includes("vidio.xyz") || link.includes("vidio.click")) return "Vibix";
   if (link.includes("veoveo")) return "Veoveo";
-  if (link.includes("alloha")) return "Alloha";
-  if (link.includes("collaps")) return "Collaps";
-  if (link.includes("turbo")) return "Turbo";
-  if (link.includes("ruapi")) return "Kinopoisk";
-  if (link.includes("kinopoisk")) return "Lumex";
-
-  // Добавляем новые плееры: Gendit / Gencit, Flixcdn, Kodik
+  if (link.includes("alloha") || link.includes("stravers")) return "Alloha";
+  if (link.includes("collaps") || link.includes("ortified") || link.includes("variyt")) return "Collaps";
+  if (link.includes("turbo") || link.includes("obrut") || link.includes("tubofilm")) return "Turbo";
   if (link.includes("horsez.org") || link.includes("ylitron.pro") || link.includes("gendit") || link.includes("gencit")) return "Gendit";
   if (link.includes("tarantino.factorios.live") || link.includes("factorios.live") || link.includes("kinohd.co") || link.includes("flixcdn")) return "Flixcdn";
   if (link.includes("kodik")) return "Kodik";
+  if (link.includes("cdnmovies")) return "Cdnmovies";
+  if (link.includes("ruapi") || link.includes("rstprg")) return "Kinopoisk";
+  if (link.includes("kinopoisk")) return "Lumex";
 
   try {
       let domain = new URL(url).hostname.replace("www.", "");
       let rawName = domain.split(".")[0];
       if (rawName === "horsez" || rawName === "ylitron") return "Gendit";
       if (rawName === "factorios" || rawName === "kinohd") return "Flixcdn";
+      
+      if (rawName === "api" || rawName === "api2") {
+        let parts = domain.split(".");
+        if (parts.length > 2) {
+          rawName = parts[1];
+        }
+      }
       return rawName.charAt(0).toUpperCase() + rawName.slice(1);
   } catch(e) {
       return "Unknown";
@@ -1753,7 +1767,7 @@ class Shikiplayer {
               }
               let player = new IframePlayer(finalUrl, p.type, refPolicy);
               this._playerInstances.set(p.type, player);
-
+              
               existingItem.classList.remove("loading");
               let indicator = existingItem.querySelector(".sp-status-indicator");
               if (indicator) {
@@ -1955,7 +1969,7 @@ async function startShikiplayer() {
   let kpApi = new KpApigetApi(http);
   let allohaApi = new AllohaApi(http, "45e20a5f584becf7a64dffb7174ddf");
   let factories = [
-    new KodikFactory(kodikUid, kodikApi),
+    // new KodikFactory(kodikUid, kodikApi),
     new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
     // new SimpleFactory("Gendit"),
