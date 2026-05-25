@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.5
+// @version         1.75.4
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -972,13 +972,7 @@ class KodikPlayer extends PlayerBase {
     this.rebuildIFrameSrc();
   }
   rebuildIFrameSrc() {
-    let link = this._translation.link;
-    if (link.startsWith("//")) {
-      link = "https:" + link;
-    } else if (!link.startsWith("http://") && !link.startsWith("https://")) {
-      link = "https://" + link;
-    }
-    let src = new URL(link);
+    let src = new URL(`https:${this._translation.link}`);
     src.searchParams.set("uid", this.uid);
     src.searchParams.set("episode", this._episode + "");
     src.searchParams.set("start_from", this._time + "");
@@ -1008,28 +1002,21 @@ class KodikFactory {
   }
   name = "Kodik";
   async create(animeId, abort) {
-    try {
-      let results = await this._api.search(animeId, abort);
-      if (results && results.length > 0) {
-        return new KodikPlayer(this.uid, results);
-      }
-    } catch (e) {
-      console.error("Kodik search API unsuccessful:", e);
-    }
-    // Ререзвный вариант: если поиск API пустой или упал, возвращаем iframe с поиском по shikimori_id
-    return new IframePlayer(`https://kodikplayer.com/find?shikimori_id=${animeId}`, this.name);
+    let results = await this._api.search(animeId, abort);
+    if (results.length === 0) return null;
+    return new KodikPlayer(this.uid, results);
   }
 }
 // IframePlayer — универсальный плеер для Kinobox источников
 class IframePlayer extends PlayerBase {
-  constructor(url, name) {
+  constructor(url, name, referrerPolicy = "origin") {
     super();
     this.name = name;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
     this.element.setAttribute("allow", "autoplay *; fullscreen *; picture-in-picture *; xr-spatial-tracking *; clipboard-write *");
     this.element.setAttribute("frameborder", "0");
-    this.element.setAttribute("referrerpolicy", "origin");
+    this.element.setAttribute("referrerpolicy", referrerPolicy);
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
 
@@ -1040,6 +1027,14 @@ class IframePlayer extends PlayerBase {
       } else if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
         finalUrl = "https://" + finalUrl;
       }
+      // Универсальное перенаправление Kodik доменов на рабочий kodikplayer.com в iframe url
+      try {
+        let u = new URL(finalUrl);
+        if (u.hostname.includes("kodik") && !u.hostname.includes("kodikapi") && u.hostname !== "kodikplayer.com") {
+          u.hostname = "kodikplayer.com";
+          finalUrl = u.toString();
+        }
+      } catch(e) {}
     }
     this.element.src = finalUrl;
   }
@@ -1062,15 +1057,19 @@ class SimpleFactory {
 
     const p = kinoboxPlayers.find((x) => targetNames.includes(x.type?.toLowerCase()));
     if (p && p.iframeUrl) {
-      return new IframePlayer(p.iframeUrl, this.name);
+      let refPolicy = "origin";
+      if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit" || this.name.toLowerCase() === "flixcdn") {
+        refPolicy = "no-referrer";
+      }
+      return new IframePlayer(p.iframeUrl, this.name, refPolicy);
     }
 
     // Резервный (fallback) вариант с прямой ссылкой, если плеер не вернулся от API
     if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit") {
-      return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name);
+      return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
     }
     if (this.name.toLowerCase() === "flixcdn") {
-      return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name);
+      return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
     }
 
     return null;
@@ -1748,7 +1747,11 @@ class Shikiplayer {
             // Если инстанса нет, но пункт меню уже есть (для заводского плеера который завершился офлайн)
             let existingItem = this._dropdownMenu.querySelector(`[data-player-name='${p.type}']`);
             if (existingItem) {
-              let player = new IframePlayer(finalUrl, p.type);
+              let refPolicy = "origin";
+              if (normName === "gendit" || normName === "gencit" || normName === "flixcdn" || finalUrl.includes("ylitron.pro") || finalUrl.includes("horsez.org")) {
+                refPolicy = "no-referrer";
+              }
+              let player = new IframePlayer(finalUrl, p.type, refPolicy);
               this._playerInstances.set(p.type, player);
 
               existingItem.classList.remove("loading");
@@ -1773,7 +1776,11 @@ class Shikiplayer {
             if (normName === "gencit" || normName === "gendit") displayName = "Gendit";
             if (normName === "flixcdn") displayName = "Flixcdn";
 
-            let player = new IframePlayer(finalUrl, displayName);
+            let refPolicy = "origin";
+            if (normName === "gendit" || normName === "gencit" || normName === "flixcdn" || finalUrl.includes("ylitron.pro") || finalUrl.includes("horsez.org")) {
+              refPolicy = "no-referrer";
+            }
+            let player = new IframePlayer(finalUrl, displayName, refPolicy);
             this._playerInstances.set(displayName, player);
 
             // Создаем и добавляем элемент в меню выпадающего списка
@@ -1951,7 +1958,7 @@ async function startShikiplayer() {
     new KodikFactory(kodikUid, kodikApi),
     new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
-    new SimpleFactory("Gendit"),
+    // new SimpleFactory("Gendit"),
     new SimpleFactory("Flixcdn"),
     new SimpleFactory("Turbo")
   ];

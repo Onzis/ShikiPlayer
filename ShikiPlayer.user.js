@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.4
+// @version         1.75.5
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -1009,20 +1009,32 @@ class KodikFactory {
 }
 // IframePlayer — универсальный плеер для Kinobox источников
 class IframePlayer extends PlayerBase {
-  constructor(url, name) {
+  constructor(url, name, referrerPolicy = "origin") {
     super();
     this.name = name;
     this.element = document.createElement("iframe");
     this.element.allowFullscreen = true;
     this.element.setAttribute("allow", "autoplay *; fullscreen *; picture-in-picture *; xr-spatial-tracking *; clipboard-write *");
     this.element.setAttribute("frameborder", "0");
-    this.element.setAttribute("referrerpolicy", "origin");
+    this.element.setAttribute("referrerpolicy", referrerPolicy);
     this.element.width = "100%";
     this.element.style.aspectRatio = "16 / 9";
 
     let finalUrl = url;
-    if (finalUrl && finalUrl.startsWith("//")) {
-      finalUrl = "https:" + finalUrl;
+    if (finalUrl) {
+      if (finalUrl.startsWith("//")) {
+        finalUrl = "https:" + finalUrl;
+      } else if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+        finalUrl = "https://" + finalUrl;
+      }
+      // Универсальное перенаправление Kodik доменов на рабочий kodikplayer.com в iframe url
+      try {
+        let u = new URL(finalUrl);
+        if (u.hostname.includes("kodik") && !u.hostname.includes("kodikapi") && u.hostname !== "kodikplayer.com") {
+          u.hostname = "kodikplayer.com";
+          finalUrl = u.toString();
+        }
+      } catch(e) {}
     }
     this.element.src = finalUrl;
   }
@@ -1034,8 +1046,33 @@ class SimpleFactory {
   }
   create(kodikResult, kinoboxPlayers) {
     if (!kodikResult?.kinopoisk_id) return null;
-    const p = kinoboxPlayers.find((x) => x.type === this.name);
-    return p?.iframeUrl ? new IframePlayer(p.iframeUrl, this.name) : null;
+
+    // Поддержка синонимов названий плееров
+    let targetNames = [this.name.toLowerCase()];
+    if (this.name.toLowerCase() === "gendit") {
+      targetNames.push("gencit");
+    } else if (this.name.toLowerCase() === "gencit") {
+      targetNames.push("gendit");
+    }
+
+    const p = kinoboxPlayers.find((x) => targetNames.includes(x.type?.toLowerCase()));
+    if (p && p.iframeUrl) {
+      let refPolicy = "origin";
+      if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit" || this.name.toLowerCase() === "flixcdn") {
+        refPolicy = "no-referrer";
+      }
+      return new IframePlayer(p.iframeUrl, this.name, refPolicy);
+    }
+
+    // Резервный (fallback) вариант с прямой ссылкой, если плеер не вернулся от API
+    if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit") {
+      return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
+    }
+    if (this.name.toLowerCase() === "flixcdn") {
+      return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
+    }
+
+    return null;
   }
 }
 // API для Alloha
@@ -1237,9 +1274,17 @@ function getPlayerNameFromUrl(url) {
   if (link.includes("ruapi")) return "Kinopoisk";
   if (link.includes("kinopoisk")) return "Lumex";
 
+  // Добавляем новые плееры: Gendit / Gencit, Flixcdn, Kodik
+  if (link.includes("horsez.org") || link.includes("ylitron.pro") || link.includes("gendit") || link.includes("gencit")) return "Gendit";
+  if (link.includes("tarantino.factorios.live") || link.includes("factorios.live") || link.includes("kinohd.co") || link.includes("flixcdn")) return "Flixcdn";
+  if (link.includes("kodik")) return "Kodik";
+
   try {
       let domain = new URL(url).hostname.replace("www.", "");
-      return domain.split(".")[0];
+      let rawName = domain.split(".")[0];
+      if (rawName === "horsez" || rawName === "ylitron") return "Gendit";
+      if (rawName === "factorios" || rawName === "kinohd") return "Flixcdn";
+      return rawName.charAt(0).toUpperCase() + rawName.slice(1);
   } catch(e) {
       return "Unknown";
   }
@@ -1675,6 +1720,85 @@ class Shikiplayer {
           }
         }
 
+        // Динамически регистрируем и выводим все остальные плееры из Kinobox (из Tape Operator)
+        if (kinoboxPlayers && kinoboxPlayers.length > 0) {
+          kinoboxPlayers.forEach((p) => {
+            if (!p || !p.type || !p.iframeUrl) return;
+
+            let finalUrl = p.iframeUrl;
+            if (finalUrl.startsWith("//")) {
+              finalUrl = "https:" + finalUrl;
+            }
+
+            // Если такой плеер уже зарегистрирован и работающий
+            if (this._playerInstances.has(p.type)) return;
+
+            // Предотвращаем дублирование дефолтных
+            let baseName = p.type;
+            let normName = baseName.toLowerCase();
+            if (normName === "alloha" && this._playerInstances.has("Alloha")) return;
+            if (normName === "collaps" && this._playerInstances.has("Collaps")) return;
+            if (normName === "kodik" && this._playerInstances.has("Kodik")) return;
+            if (normName === "turbo" && this._playerInstances.has("Turbo")) return;
+            if (normName === "gendit" && this._playerInstances.has("Gendit")) return;
+            if (normName === "gencit" && this._playerInstances.has("Gendit")) return;
+            if (normName === "flixcdn" && this._playerInstances.has("Flixcdn")) return;
+
+            // Если инстанса нет, но пункт меню уже есть (для заводского плеера который завершился офлайн)
+            let existingItem = this._dropdownMenu.querySelector(`[data-player-name='${p.type}']`);
+            if (existingItem) {
+              let refPolicy = "origin";
+              if (normName === "gendit" || normName === "gencit" || normName === "flixcdn" || finalUrl.includes("ylitron.pro") || finalUrl.includes("horsez.org")) {
+                refPolicy = "no-referrer";
+              }
+              let player = new IframePlayer(finalUrl, p.type, refPolicy);
+              this._playerInstances.set(p.type, player);
+
+              existingItem.classList.remove("loading");
+              let indicator = existingItem.querySelector(".sp-status-indicator");
+              if (indicator) {
+                indicator.className = "sp-status-indicator online";
+              }
+              // Перезаписываем событие клика
+              let newItem = existingItem.cloneNode(true);
+              newItem.addEventListener("click", () => {
+                this.switchPlayer(p.type, player);
+                this._dropdown.classList.remove("open");
+              });
+              existingItem.parentNode.replaceChild(newItem, existingItem);
+              return;
+            }
+
+            // Пропускаем неопределенные названия
+            if (["api", "api2", "unknown"].includes(normName)) return;
+
+            let displayName = p.type;
+            if (normName === "gencit" || normName === "gendit") displayName = "Gendit";
+            if (normName === "flixcdn") displayName = "Flixcdn";
+
+            let refPolicy = "origin";
+            if (normName === "gendit" || normName === "gencit" || normName === "flixcdn" || finalUrl.includes("ylitron.pro") || finalUrl.includes("horsez.org")) {
+              refPolicy = "no-referrer";
+            }
+            let player = new IframePlayer(finalUrl, displayName, refPolicy);
+            this._playerInstances.set(displayName, player);
+
+            // Создаем и добавляем элемент в меню выпадающего списка
+            let item = document.createElement("div");
+            item.className = "sp-dropdown-item";
+            item.dataset.playerName = displayName;
+            item.innerHTML = `
+ ${displayName}
+<span class="sp-status-indicator online"></span>
+            `;
+            item.addEventListener("click", () => {
+              this.switchPlayer(displayName, player);
+              this._dropdown.classList.remove("open");
+            });
+            this._dropdownMenu.appendChild(item);
+          });
+        }
+
         // Динамически регистрируем и выводим плееры из базы Кинопоиска (lumex и другие)
         if (kpPlayers && kpPlayers.length > 0) {
           kpPlayers.forEach((url) => {
@@ -1834,6 +1958,8 @@ async function startShikiplayer() {
     new KodikFactory(kodikUid, kodikApi),
     new AllohaFactory(allohaApi),
     new SimpleFactory("Collaps"),
+    // new SimpleFactory("Gendit"),
+    new SimpleFactory("Flixcdn"),
     new SimpleFactory("Turbo")
   ];
   let shikiplayer = null;
