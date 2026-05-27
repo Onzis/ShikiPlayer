@@ -8,6 +8,7 @@
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
+// @icon            https://raw.githubusercontent.com/Onzis/ShikiPlayer/refs/heads/main/public/icon/ShikiPlayer.ico
 // @grant           GM.xmlHttpRequest
 // @connect         shikimori.io
 // @connect         kodikapi.com

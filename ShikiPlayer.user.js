@@ -4,11 +4,11 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.7
+// @version         1.75.8
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
-// @icon            https://github.com/Onzis/ShikiPlayer/blob/main/public/ico.png
+// @icon            https://raw.githubusercontent.com/Onzis/ShikiPlayer/refs/heads/main/public/icon/ShikiPlayer.ico
 // @grant           GM.xmlHttpRequest
 // @connect         shikimori.io
 // @connect         kodikapi.com
