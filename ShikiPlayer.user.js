@@ -4,7 +4,7 @@
 // @namespace       https://github.com/Onzis/ShikiPlayer
 // @author          Onzis
 // @license         GPL-3.0 license
-// @version         1.75.8
+// @version         1.75.9
 // @homepageURL     https://github.com/Onzis/ShikiPlayer
 // @updateURL       https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
 // @downloadURL     https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js
@@ -858,21 +858,54 @@ class GMHttp {
 
     // Добавляем таймаут по умолчанию 10 секунд
     const timeout = init?.timeout || 10000;
+    const signal = init?.signal;
+
+    // ИСПРАВЛЕНИЕ: signal раньше принимался во всех вызовах, но нигде фактически
+    // не использовался — запросы никогда не отменялись. Теперь при уже отменённом
+    // сигнале или его срабатывании во время запроса мы реально прерываем GM.xmlHttpRequest.
+    if (signal?.aborted) {
+      throw new DOMException("The operation was aborted", "AbortError");
+    }
+
     let gmResponse = await new Promise((resolve, reject) => {
-      GM.xmlHttpRequest({
+      let settled = false;
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          gmRequest?.abort();
+        } catch (e) {}
+        reject(new DOMException("The operation was aborted", "AbortError"));
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+
+      const cleanup = () => {
+        signal?.removeEventListener("abort", onAbort);
+      };
+
+      let gmRequest = GM.xmlHttpRequest({
         url: requestUrl,
         method: requestMethod,
         data: requestBody,
         headers: requestHeaders,
         timeout: timeout,
         onload: (response) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve(response);
         },
         onerror: (error) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           // Возвращаем ответ с status 0 вместо throw, чтобы вызывающий код мог обработать
           resolve(error);
         },
         ontimeout: () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           reject(new Error(`Request timeout after ${timeout}ms`));
         },
       });
@@ -1098,29 +1131,43 @@ class AllohaApi {
         method: "GET"
       }
     ];
-    for (let end of endpoints) {
-      try {
+
+    // ИСПРАВЛЕНИЕ: раньше эндпоинты опрашивались последовательно (await в цикле),
+    // из-за чего в худшем случае (когда первые два не отвечают до таймаута)
+    // получение Alloha могло занимать до ~15 секунд. Опрашиваем все параллельно,
+    // а затем выбираем первый успешный результат в изначальном порядке приоритета.
+    let results = await Promise.allSettled(
+      endpoints.map(async (end) => {
         let response = await this._http.fetch(end.url, {
           method: end.method,
           signal: abort,
           timeout: 5000,
         });
-        if (response.ok) {
-          let text = await response.text();
-          let data = JSON.parse(text);
-          if (data && data.status === "success" && data.data) {
-            const iframeUrl = data.data.iframe || data.data.iframe_url;
-            if (iframeUrl) {
-              return iframeUrl;
-            }
-          }
+        if (!response.ok) throw new ResponseError(response);
+        let text = await response.text();
+        let data = JSON.parse(text);
+        if (data && data.status === "success" && data.data) {
+          const iframeUrl = data.data.iframe || data.data.iframe_url;
+          if (iframeUrl) return iframeUrl;
         }
-      } catch (e) {
-        console.error(`Error querying Alloha API at ${end.url} (${end.method}):`, e);
+        throw new Error("Alloha API: no iframe url in response");
+      })
+    );
+
+    for (let i = 0; i < results.length; i++) {
+      let result = results[i];
+      if (result.status === "fulfilled" && result.value) {
+        return result.value;
       }
+      console.error(`Error querying Alloha API at ${endpoints[i].url} (${endpoints[i].method}):`, result.reason);
     }
-    // Fallback: Direct iframe embed
-    return `${this._baseUrl}/?token=${this._token}&kp=${kinopoiskId}`;
+
+    // ИСПРАВЛЕНИЕ: раньше функция ВСЕГДА возвращала ссылку на theatre.stravers.live,
+    // даже если ни один эндпоинт не ответил успешно — из-за этого плеер Alloha
+    // всегда показывался "online" в списке, даже когда полностью нерабочий.
+    // Теперь при полном отказе честно возвращаем null, чтобы AllohaFactory
+    // могла корректно пометить источник как недоступный.
+    return null;
   }
 }
 // AllohaFactory — фабрика для создания Alloha плеера через AllohaApi
@@ -1422,6 +1469,9 @@ class Shikiplayer {
     this._currentPlayer = null;
     this._playerInstances = new Map();
     this._isTheaterMode = false;
+    // ИСПРАВЛЕНИЕ: контроллер отмены теперь принадлежит самому экземпляру плеера,
+    // чтобы dispose() мог реально прервать все ещё не завершённые запросы.
+    this._abortController = new AbortController();
 
     // Инициализация системы подсказок
     this._tooltip = new Tooltip();
@@ -1431,11 +1481,16 @@ class Shikiplayer {
        this._dropdown.classList.toggle("open");
     });
     // Закрытие выпадающего списка при клике вне его
-    document.addEventListener("click", (e) => {
+    // ИСПРАВЛЕНИЕ: обработчики на document раньше никогда не снимались в dispose(),
+    // из-за чего при каждой навигации Turbolinks на новую страницу тайтла в document
+    // накапливался ещё один слушатель click/keydown от предыдущего (уже уничтоженного)
+    // экземпляра плеера — утечка памяти и обработчиков, растущая с каждым переходом.
+    this._onDocumentClick = (e) => {
       if (!this._dropdown.contains(e.target)) {
         this._dropdown.classList.remove("open");
       }
-    });
+    };
+    document.addEventListener("click", this._onDocumentClick);
     // Обработчик для кнопки режима кинотеатра
     this._theaterBtn.addEventListener("click", () => {
       this.toggleTheaterMode();
@@ -1449,11 +1504,12 @@ class Shikiplayer {
       this.incrementEpisode();
     });
     // Обработчик для закрытия режима кинотеатра по клавише Esc
-    document.addEventListener("keydown", (e) => {
+    this._onDocumentKeydown = (e) => {
       if (e.key === "Escape" && this._isTheaterMode) {
         this.toggleTheaterMode();
       }
-    });
+    };
+    document.addEventListener("keydown", this._onDocumentKeydown);
   }
 
   toggleTheaterMode() {
@@ -1499,13 +1555,30 @@ class Shikiplayer {
         this._episodeBtn.classList.remove("success");
       }, 800);
 
-      // ИСПРАВЛЕНИЕ: Увеличиваем задержку и добавляем несколько попыток обновления счетчика
-      // Обновляем счетчик серий с увеличенной задержкой
+      // ИСПРАВЛЕНИЕ: раньше обновление счётчика полагалось только на два
+      // фиксированных setTimeout (1с/2с) — на медленном соединении реальное
+      // обновление .rate-number на странице могло произойти позже, и счётчик
+      // оставался устаревшим. Дополнительно следим за изменением элемента
+      // напрямую и обновляемся сразу, как только Shikimori его реально изменит,
+      // а таймауты оставляем как подстраховку.
+      let rateNumber =
+        document.querySelector(".rate-number") ||
+        document.querySelector(".b-user_rate .rate-number") ||
+        document.querySelector(".b-add_to_list .rate-number");
+      if (rateNumber) {
+        let observer = new MutationObserver(() => {
+          this.updateEpisodeCount();
+        });
+        observer.observe(rateNumber, { characterData: true, childList: true, subtree: true });
+        setTimeout(() => observer.disconnect(), 5000);
+      }
+
+      // Обновляем счетчик серий с увеличенной задержкой (подстраховка)
       setTimeout(() => {
         this.updateEpisodeCount();
       }, 1000);
 
-      // Вторая попытка обновления счетчика
+      // Вторая попытка обновления счетчика (подстраховка)
       setTimeout(() => {
         this.updateEpisodeCount();
       }, 2000);
@@ -1559,18 +1632,49 @@ class Shikiplayer {
     }
   }
 
-  async start(abort) {
+  _resolveAnimeId() {
+    // Метод 1: ID можно извлечь прямо из URL страницы тайтла — работает всегда,
+    // в том числе для неавторизованных пользователей (страница вида
+    // /animes/z1535-death-note или /animes/1535-death-note).
+    let match = location.pathname.match(/\/animes\/(?:z)?(\d+)/i);
+    if (match) return +match[1];
+
+    // Метод 2 (запасной): data-entry виджета оценки — доступен только
+    // авторизованным пользователям, но может содержать более точный id,
+    // если по какой-то причине URL не совпал с ожидаемым шаблоном.
+    let entryText = document
+      .querySelector(".b-db_entry .b-user_rate")
+      ?.getAttribute("data-entry");
+    if (entryText) {
+      try {
+        let entry = JSON.parse(entryText);
+        if (entry && typeof entry.id === "number") return entry.id;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async start() {
+    const abort = this._abortController.signal;
+
+    // ИСПРАВЛЕНИЕ: раньше id тайтла бралcя только из data-entry виджета оценки
+    // (.b-user_rate), который Shikimori рендерит только авторизованным пользователям.
+    // У анонимных посетителей entryText всегда отсутствовал, но контейнер плеера
+    // уже был вставлен в DOM до этой проверки — в итоге на странице оставался
+    // пустой блок "Выберите плеер" с вечным спиннером загрузки.
+    // Теперь: 1) сначала пытаемся получить id максимально надёжным способом —
+    // прямо из URL страницы (работает независимо от авторизации), 2) как более
+    // точный вариант используем data-entry, если он есть, 3) ничего не вставляем
+    // в DOM, пока не убедимся, что id найден.
+    let animeId = this._resolveAnimeId();
+    if (!animeId) return;
+
     // Очищаем предыдущий контейнер, если он существует
     let existing = document.querySelector(".sp-outer-wrapper");
     if (existing) existing.remove();
     let before = document.querySelector(".b-db_entry");
-    if (before) before.after(this.element);
-    let entryText = document
-      .querySelector(".b-db_entry .b-user_rate")
-      ?.getAttribute("data-entry");
-    if (!entryText) return;
-    let entry = JSON.parse(entryText);
-    if (!entry || typeof entry.id !== "number") return;
+    if (!before) return;
+    before.after(this.element);
 
     // Добавляем подсказки только к кнопкам
     this._tooltip.attach(this._theaterBtn, "Театральный режим");
@@ -1598,7 +1702,7 @@ class Shikiplayer {
     let kodikFactory = this._playerFactories.find((f) => f.name === "Kodik");
     if (kodikFactory) {
       try {
-        let kodikPlayer = await kodikFactory.create(entry.id, abort);
+        let kodikPlayer = await kodikFactory.create(animeId, abort);
         if (kodikPlayer) {
           this._playerInstances.set("Kodik", kodikPlayer);
           this.switchPlayer("Kodik", kodikPlayer);
@@ -1667,7 +1771,7 @@ class Shikiplayer {
 
     // Пробуем получить данные от Kodik API
     try {
-      let kodikResults = await this._kodikApi.search(entry.id, abort);
+      let kodikResults = await this._kodikApi.search(animeId, abort);
       kodikResult = kodikResults[0];
       // Если Kodik вернул kinopoisk_id, используем его (приоритет)
       if (kodikResult && kodikResult.kinopoisk_id) {
@@ -1697,43 +1801,51 @@ class Shikiplayer {
           kodikResult = { kinopoisk_id: kinopoiskId };
         }
 
-        // Создаем все базовые плееры, используя полученные данные из Kinobox
-        for (let factory of this._playerFactories) {
-          if (factory.name === "Kodik") continue;
+        // Создаем все базовые плееры, используя полученные данные из Kinobox.
+        // ИСПРАВЛЕНИЕ: раньше фабрики создавались последовательно (await в
+        // for-of), из-за чего, например, медленный/зависающий запрос Alloha
+        // (до 3 внутренних попыток по 5с) блокировал появление Collaps/Turbo/
+        // Flixcdn в списке на десятки секунд. Теперь все источники запускаются
+        // параллельно, а каждый пункт списка обновляется независимо, как
+        // только его собственный запрос завершится.
+        await Promise.allSettled(
+          this._playerFactories
+            .filter((factory) => factory.name !== "Kodik")
+            .map(async (factory) => {
+              let item = this._dropdownMenu.querySelector(
+                `[data-player-name='${factory.name}']`
+              );
+              if (!item) return;
 
-          let item = this._dropdownMenu.querySelector(
-            `[data-player-name='${factory.name}']`
-          );
-          if (!item) continue;
-
-          try {
-            let player = await factory.create(kodikResult, kinoboxPlayers, abort);
-            item.classList.remove("loading");
-            if (!player) {
-              item
-                .querySelector(".sp-status-indicator")
-                .classList.remove("loading");
-              item.querySelector(".sp-status-indicator").classList.add("offline");
-              continue;
-            }
-            this._playerInstances.set(factory.name, player);
-            item
-              .querySelector(".sp-status-indicator")
-              .classList.remove("loading");
-            item.querySelector(".sp-status-indicator").classList.add("online");
-            item.addEventListener("click", () => {
-              this.switchPlayer(factory.name, player);
-              this._dropdown.classList.remove("open");
-            });
-          } catch (e) {
-            console.error(`Error in ${factory.name}:`, e);
-            item
-              .querySelector(".sp-status-indicator")
-              .classList.remove("loading");
-            item.querySelector(".sp-status-indicator").classList.add("offline");
-            item.classList.remove("loading");
-          }
-        }
+              try {
+                let player = await factory.create(kodikResult, kinoboxPlayers, abort);
+                item.classList.remove("loading");
+                if (!player) {
+                  item
+                    .querySelector(".sp-status-indicator")
+                    .classList.remove("loading");
+                  item.querySelector(".sp-status-indicator").classList.add("offline");
+                  return;
+                }
+                this._playerInstances.set(factory.name, player);
+                item
+                  .querySelector(".sp-status-indicator")
+                  .classList.remove("loading");
+                item.querySelector(".sp-status-indicator").classList.add("online");
+                item.addEventListener("click", () => {
+                  this.switchPlayer(factory.name, player);
+                  this._dropdown.classList.remove("open");
+                });
+              } catch (e) {
+                console.error(`Error in ${factory.name}:`, e);
+                item
+                  .querySelector(".sp-status-indicator")
+                  .classList.remove("loading");
+                item.querySelector(".sp-status-indicator").classList.add("offline");
+                item.classList.remove("loading");
+              }
+            })
+        );
 
         // Динамически регистрируем и выводим все остальные плееры из Kinobox (из Tape Operator)
         if (kinoboxPlayers && kinoboxPlayers.length > 0) {
@@ -1821,14 +1933,17 @@ class Shikiplayer {
             if (baseName.toLowerCase().includes("кп api") || baseName.toLowerCase().includes("kp api")) return;
             if (baseName.toLowerCase() === "api" || baseName.toLowerCase() === "unknown") return;
 
-            let finalName = baseName;
-            let counter = 2;
+            // ИСПРАВЛЕНИЕ: раньше при совпадении имени с уже существующим плеером
+            // код не пропускал повтор, а добавлял к имени счётчик ("Collaps 2",
+            // "Turbo 3" и т.д.). getPlayerNameFromUrl определяет сервис по домену/
+            // паттерну ссылки, и когда виджет Кинопоиска отдаёт несколько зеркал
+            // одного и того же сервиса, каждое зеркало превращалось в отдельный,
+            // визуально совершенно лишний пункт меню того же самого источника.
+            // Теперь просто пропускаем зеркало, если этот сервис уже зарегистрирован
+            // (первое найденное рабочее зеркало и остаётся единственным пунктом).
+            if (this._playerInstances.has(baseName)) return;
 
-            // Обеспечиваем абсолютную уникальность имени плеера в списке
-            while (this._playerInstances.has(finalName)) {
-              finalName = `${baseName} ${counter}`;
-              counter++;
-            }
+            let finalName = baseName;
 
             if (["api2", "lumex 2"].includes(finalName.toLowerCase())) return;
 
@@ -1908,11 +2023,27 @@ class Shikiplayer {
   }
 
   dispose() {
+    // ИСПРАВЛЕНИЕ: отменяем ещё не завершённые сетевые запросы этого экземпляра
+    // (раньше AbortController создавался, но никогда не срабатывал по-настоящему —
+    // см. фикс в GMHttp — поэтому старые запросы "жили" и после ухода со страницы).
+    if (this._abortController && !this._abortController.signal.aborted) {
+      this._abortController.abort();
+    }
+
     if (this._currentPlayer) {
       this._currentPlayer.dispose();
       this._currentPlayer = null;
     }
     this._playerInstances.clear();
+
+    // ИСПРАВЛЕНИЕ: снимаем обработчики, добавленные на document в конструкторе,
+    // иначе они продолжают висеть после удаления самого плеера.
+    if (this._onDocumentClick) {
+      document.removeEventListener("click", this._onDocumentClick);
+    }
+    if (this._onDocumentKeydown) {
+      document.removeEventListener("keydown", this._onDocumentKeydown);
+    }
 
     // Уничтожаем систему подсказок
     if (this._tooltip) {
@@ -1991,7 +2122,7 @@ async function startShikiplayer() {
     if (!location.pathname.startsWith("/animes/")) return;
 
     shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi, kpApi);
-    await shikiplayer.start(new AbortController().signal);
+    await shikiplayer.start();
   }
 
   // Первичный запуск
