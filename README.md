@@ -1,10 +1,10 @@
 # ShikiPlayer
 ShikiPlayer — это пользовательский скрипт, который встраивает видеоплеер непосредственно на сайт Shikimori, позволяя смотреть аниме прямо на странице без необходимости покидать платформу. Поддерживает несколько источников видео (Turbo, Lumex, Alloha, Kodik, kinopoisk, Flixcdn, Collaps) с автоматическим переключением на резервный источник в случае сбоя и выпадающим меню для ручного выбора.
 
-[![Установить](https://img.shields.io/badge/Установить-Tampermonkey-00ad5f?style=flat-square&logo=tampermonkey)](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js)
+[![Установить](https://img.shields.io/badge/Установить-Tampermonkey-blue?style=flat-square&logo=tampermonkey)](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js)
 [![Версия](https://img.shields.io/badge/Версия-1.75.9-blue?style=flat-square)](https://github.com/Onzis/ShikiPlayer)
-[![Все скачивания на GitHub](https://img.shields.io/github/downloads/Onzis/ShikiPlayer/total?label=Скачиваний&logo=github)](https://github.com/Onzis/ShikiPlayer/releases)
-[![GitHub stars](https://img.shields.io/github/stars/Onzis/ShikiPlayer?label=Звёзды&style=flat-square)](https://github.com/Onzis/ShikiPlayer/stargazers)
+[![Все скачивания на GitHub](https://img.shields.io/github/downloads/Onzis/ShikiPlayer/total?label=Скачиваний&logo=github&color=blue)](https://github.com/Onzis/ShikiPlayer/releases)
+[![GitHub stars](https://img.shields.io/github/stars/Onzis/ShikiPlayer?label=Звёзды&style=flat-square&color=blue)](https://github.com/Onzis/ShikiPlayer/stargazers)
 
 > [!WARNING]
 > 
