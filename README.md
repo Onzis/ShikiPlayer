@@ -3,6 +3,7 @@ ShikiPlayer — это пользовательский скрипт, котор
 
 [![Установить](https://img.shields.io/badge/Установить-Tampermonkey-00ad5f?style=flat-square&logo=tampermonkey)](https://github.com/Onzis/ShikiPlayer/raw/refs/heads/main/ShikiPlayer.user.js)
 [![Версия](https://img.shields.io/badge/версия-1.75.9-blue?style=flat-square)](https://github.com/Onzis/ShikiPlayer)
+[![GitHub All Releases](https://img.shields.io/github/downloads/Onzis/ShikiPlayer/total?logo=github)](https://github.com/Onzis/ShikiPlayer/releases)
 [![GitHub stars](https://img.shields.io/github/stars/Onzis/ShikiPlayer?label=Звёзды&style=flat-square)](https://github.com/Onzis/ShikiPlayer/stargazers)
 
 > [!WARNING]
