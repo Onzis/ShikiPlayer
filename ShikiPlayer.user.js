@@ -1079,8 +1079,8 @@ class SimpleFactory {
     this.name = type;
   }
   create(kodikResult, kinoboxPlayers) {
-    if (!kodikResult?.kinopoisk_id) return null;
-    
+    kinoboxPlayers = Array.isArray(kinoboxPlayers) ? kinoboxPlayers : [];
+
     // Поддержка синонимов названий плееров
     let targetNames = [this.name.toLowerCase()];
     if (this.name.toLowerCase() === "gendit") {
@@ -1088,24 +1088,43 @@ class SimpleFactory {
     } else if (this.name.toLowerCase() === "gencit") {
       targetNames.push("gendit");
     }
-    
-    const p = kinoboxPlayers.find((x) => targetNames.includes(x.type?.toLowerCase()));
+
+    // ВАЖНО: для плеера, уже найденного Kinobox по названию, kinopoisk_id не нужен.
+    // Раньше эта проверка стояла выше поиска в kinoboxPlayers, поэтому title-fallback
+    // был бы бесполезен для новых тайтлов без привязки Кинопоиска.
+    const p = kinoboxPlayers.find((x) =>
+      targetNames.includes((x.type || x.source || "").toLowerCase())
+    );
     if (p && p.iframeUrl) {
       let refPolicy = "origin";
-      if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit" || this.name.toLowerCase() === "flixcdn") {
+      if (
+        this.name.toLowerCase() === "gendit" ||
+        this.name.toLowerCase() === "gencit" ||
+        this.name.toLowerCase() === "flixcdn"
+      ) {
         refPolicy = "no-referrer";
       }
       return new IframePlayer(p.iframeUrl, this.name, refPolicy);
     }
-    
-    // Резервный (fallback) вариант с прямой ссылкой, если плеер не вернулся от API
+
+    // Прямые fallback-ссылки ниже уже действительно требуют kinopoisk_id.
+    if (!kodikResult?.kinopoisk_id) return null;
+
     if (this.name.toLowerCase() === "gendit" || this.name.toLowerCase() === "gencit") {
-      return new IframePlayer(`https://horsez.org/lat/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
+      return new IframePlayer(
+        `https://horsez.org/lat/${kodikResult.kinopoisk_id}`,
+        this.name,
+        "no-referrer"
+      );
     }
     if (this.name.toLowerCase() === "flixcdn") {
-      return new IframePlayer(`https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`, this.name, "no-referrer");
+      return new IframePlayer(
+        `https://tarantino.factorios.live/show/kinopoisk/${kodikResult.kinopoisk_id}`,
+        this.name,
+        "no-referrer"
+      );
     }
-    
+
     return null;
   }
 }
@@ -1177,6 +1196,17 @@ class AllohaFactory {
   }
   name = "Alloha";
   async create(kodikResult, kinoboxPlayers, abort) {
+    kinoboxPlayers = Array.isArray(kinoboxPlayers) ? kinoboxPlayers : [];
+
+    // Сначала используем уже найденный Kinobox iframe. Это позволяет Alloha
+    // работать даже у тайтла, для которого ещё нет kinopoisk_id.
+    const p = kinoboxPlayers.find(
+      (x) => (x.type || x.source || "").toLowerCase() === "alloha"
+    );
+    if (p && p.iframeUrl) {
+      return new IframePlayer(p.iframeUrl, this.name);
+    }
+
     if (!kodikResult?.kinopoisk_id) return null;
     let url = await this._api.getIframeUrl(kodikResult.kinopoisk_id, abort);
     if (!url) return null;
@@ -1195,7 +1225,7 @@ class KodikApi {
     url.searchParams.set("shikimori_id", shikimoriId + "");
     let response = await this._http.fetch(url, {
       signal: abort,
-      timeout: 10000,
+      timeout: 4000,
     });
     if (response.status === 0) {
       throw new Error("Kodik API network error (status 0)");
@@ -1218,24 +1248,139 @@ class KodikApi {
 class KinoboxApi {
   constructor(http) {
     this._http = http;
+    this._sessionId = Math.trunc(Math.random() * 100);
   }
-  async players(kinopoisk, abort) {
-    let url = new URL("https://fbphdplay.top/api/players");
-    url.searchParams.set("kinopoisk", kinopoisk + "");
+
+  getTs() {
+    let s = Math.ceil(Date.now() / 1e3) % 1e5;
+    let i = s % 100;
+    let r = i - (i % 3);
+    return s - i + r + "." + this._sessionId;
+  }
+
+  _normalizePlayers(data) {
+    const raw = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data)
+      ? data
+      : Array.isArray(data?.players)
+      ? data.players
+      : [];
+
+    return raw
+      .map((p) => {
+        if (!p || typeof p !== "object") return null;
+        const type = p.type || p.source || p.name || "";
+        const iframeUrl =
+          p.iframeUrl ||
+          p.iframe_url ||
+          p.iframe ||
+          p.path ||
+          p.url ||
+          null;
+        if (!type || !iframeUrl) return null;
+        return { ...p, type, iframeUrl };
+      })
+      .filter(Boolean);
+  }
+
+  async _fetchPlayers(url, abort, timeout = 5000, headers = {}) {
     let response = await this._http.fetch(url, {
-      headers: {
-        Origin: "https://fbphdplay.top",
-      },
+      headers,
       signal: abort,
-      timeout: 5000,
+      timeout,
     });
     if (!response.ok) throw new ResponseError(response);
     let text = await response.text();
     let data = JSON.parse(text);
-    return Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+    const players = this._normalizePlayers(data);
+    return players;
+  }
+
+  async players(kinopoisk, abort) {
+    const requests = [];
+
+    // Текущий endpoint из 1.75.9.
+    {
+      let url = new URL("https://fbphdplay.top/api/players");
+      url.searchParams.set("kinopoisk", kinopoisk + "");
+      requests.push(
+        this._fetchPlayers(url, abort, 5000, {
+          Origin: "https://fbphdplay.top",
+        })
+      );
+    }
+
+    // Официальный Kinobox endpoint как резерв.
+    {
+      let url = new URL("https://api.kinobox.tv/api/players");
+      url.searchParams.set("kinopoisk", kinopoisk + "");
+      url.searchParams.set("ts", this.getTs());
+      requests.push(
+        this._fetchPlayers(url, abort, 5000, {
+          Referer: "https://kinohost.web.app/",
+          Origin: "https://kinohost.web.app",
+        })
+      );
+    }
+
+    const settled = await Promise.allSettled(requests);
+    const merged = [];
+    const seen = new Set();
+    for (const result of settled) {
+      if (result.status !== "fulfilled") {
+        console.error("Kinobox endpoint error:", result.reason);
+        continue;
+      }
+      for (const p of result.value) {
+        const key = `${(p.type || "").toLowerCase()}|${p.iframeUrl}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(p);
+      }
+    }
+    return merged;
+  }
+
+  async playersByTitle(title, abort) {
+    if (!title) return [];
+    let url = new URL("https://api.kinobox.tv/api/players");
+    url.searchParams.set("title", title);
+    url.searchParams.set("ts", this.getTs());
+    return this._fetchPlayers(url, abort, 5000, {
+      Referer: "https://kinohost.web.app/",
+      Origin: "https://kinohost.web.app",
+    });
+  }
+
+  async playersByTitles(titles, abort) {
+    const uniqueTitles = [...new Set(
+      (titles || []).map((x) => String(x || "").trim()).filter(Boolean)
+    )];
+    if (uniqueTitles.length === 0) return [];
+
+    const settled = await Promise.allSettled(
+      uniqueTitles.map((title) => this.playersByTitle(title, abort))
+    );
+
+    const merged = [];
+    const seen = new Set();
+    settled.forEach((result, i) => {
+      if (result.status !== "fulfilled") {
+        console.error(`Kinobox title search failed for "${uniqueTitles[i]}":`, result.reason);
+        return;
+      }
+      for (const p of result.value) {
+        const key = `${(p.type || "").toLowerCase()}|${p.iframeUrl}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(p);
+      }
+    });
+
+    return merged;
   }
 }
-
 // API для KpApiget
 class KpApigetApi {
   constructor(http) {
@@ -1769,36 +1914,82 @@ class Shikiplayer {
       if (match) kinopoiskId = match[0];
     }
 
-    // Пробуем получить данные от Kodik API
-    try {
-      let kodikResults = await this._kodikApi.search(animeId, abort);
-      kodikResult = kodikResults[0];
-      // Если Kodik вернул kinopoisk_id, используем его (приоритет)
-      if (kodikResult && kodikResult.kinopoisk_id) {
-        kinopoiskId = kodikResult.kinopoisk_id;
+    // Для новых тайтлов на Shikimori ссылка на Кинопоиск может ещё отсутствовать.
+    // Поэтому параллельно с Kodik ищем плееры Kinobox непосредственно по названиям.
+    const h1Title = document.querySelector("h1")?.textContent?.trim() || "";
+    const titleCandidates = [];
+    if (h1Title) {
+      const parts = h1Title
+        .split(/\s+\/\s+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (parts.length > 1) {
+        // Обычно Shikimori показывает "Русское название / English title".
+        // Двух отдельных запросов достаточно и это укладывается в лимит Kinobox.
+        titleCandidates.push(...parts.slice(0, 2));
+      } else {
+        titleCandidates.push(h1Title);
       }
-    } catch (e) {
-      console.error("Kodik API error (will try fallback):", e);
-      // Продолжаем даже если Kodik API не доступен — используем kinopoisk_id со страницы
     }
-
-    if (kinopoiskId) {
-      // Запускаем запросы к Kinobox API и KP API параллельно
-      let kinoboxPromise = this._kinoboxApi.players(kinopoiskId, abort).catch((e) => {
-        console.error("Kinobox API error:", e);
+    const kodikPromise = this._kodikApi.search(animeId, abort)
+      .then((results) => results || [])
+      .catch((e) => {
+        console.error("Kodik API error (will try fallback):", e);
         return [];
       });
-      let kpPromise = this._kpApi ? this._kpApi.players(kinopoiskId, abort).catch((e) => {
-        console.error("KP API error:", e);
+
+    const titlePlayersPromise = this._kinoboxApi
+      .playersByTitles(titleCandidates, abort)
+      .catch((e) => {
+        console.error("Kinobox title fallback error:", e);
         return [];
-      }) : Promise.resolve([]);
+      });
+
+    let [kodikResults, titlePlayers] = await Promise.all([
+      kodikPromise,
+      titlePlayersPromise,
+    ]);
+
+    kodikResult = kodikResults[0] || null;
+    if (kodikResult && kodikResult.kinopoisk_id) {
+      kinopoiskId = kodikResult.kinopoisk_id;
+    }
+
+    if (kinopoiskId || titlePlayers.length > 0) {
+      // Если ID Кинопоиска известен — дополняем title-результаты обычным поиском.
+      // Если ID нет, всё равно можем работать с iframe, найденными Kinobox по названию.
+      let kinoboxPromise = kinopoiskId
+        ? this._kinoboxApi.players(kinopoiskId, abort).catch((e) => {
+            console.error("Kinobox API error:", e);
+            return [];
+          })
+        : Promise.resolve([]);
+
+      let kpPromise = kinopoiskId && this._kpApi
+        ? this._kpApi.players(kinopoiskId, abort).catch((e) => {
+            console.error("KP API error:", e);
+            return [];
+          })
+        : Promise.resolve([]);
 
       try {
-        let [kinoboxPlayers, kpPlayers] = await Promise.all([kinoboxPromise, kpPromise]);
+        let [idPlayers, kpPlayers] = await Promise.all([kinoboxPromise, kpPromise]);
 
-        // Создаём фиктивный kodikResult если Kodik API не сработал
+        // Объединяем результаты поиска по title и по kinopoisk.
+        let kinoboxPlayers = [];
+        let seenKinobox = new Set();
+        for (const p of [...titlePlayers, ...idPlayers]) {
+          if (!p || !p.iframeUrl) continue;
+          const key = `${(p.type || "").toLowerCase()}|${p.iframeUrl}`;
+          if (seenKinobox.has(key)) continue;
+          seenKinobox.add(key);
+          kinoboxPlayers.push(p);
+        }
+
+        // Создаём объект даже без kinopoisk_id: фабрики теперь умеют
+        // использовать готовые iframe из kinoboxPlayers напрямую.
         if (!kodikResult) {
-          kodikResult = { kinopoisk_id: kinopoiskId };
+          kodikResult = { kinopoisk_id: kinopoiskId || null };
         }
 
         // Создаем все базовые плееры, используя полученные данные из Kinobox.
@@ -1965,6 +2156,29 @@ class Shikiplayer {
             this._dropdownMenu.appendChild(item);
           });
         }
+
+        // Автоматически выбираем первый реально найденный источник.
+        // Раньше при отключённом Kodik интерфейс оставался на "Выберите плеер"
+        // даже после успешного обнаружения других плееров.
+        if (!this._currentPlayer && this._playerInstances.size > 0) {
+          const preferred = ["Collaps", "Turbo", "Flixcdn", "Alloha", "Gendit", "Vibix", "Lumex"];
+          let selectedName = preferred.find((name) => this._playerInstances.has(name));
+          if (!selectedName) {
+            selectedName = this._playerInstances.keys().next().value;
+          }
+          if (selectedName) {
+            this.switchPlayer(selectedName, this._playerInstances.get(selectedName));
+          }
+        }
+
+        // Если ничего не найдено, не оставляем вечный спиннер.
+        if (!this._currentPlayer) {
+          this._loadingOverlay.style.display = "flex";
+          const spinner = this._loadingOverlay.querySelector(".sp-loading-spinner");
+          if (spinner) spinner.style.display = "none";
+          const text = this._loadingOverlay.querySelector(".sp-loading-text");
+          if (text) text.textContent = "Доступные плееры не найдены";
+        }
       } catch (e) {
         console.error("General API error:", e);
         for (let factory of this._playerFactories) {
@@ -1982,7 +2196,7 @@ class Shikiplayer {
         }
       }
     } else {
-      // Нет kinopoisk_id — помечаем все Kinobox плееры как офлайн
+      // Нет ни kinopoisk_id, ни результатов Kinobox по названию — помечаем всё офлайн
       for (let factory of this._playerFactories) {
         if (factory.name === "Kodik") continue;
         let item = this._dropdownMenu.querySelector(
@@ -1996,11 +2210,22 @@ class Shikiplayer {
           item.querySelector(".sp-status-indicator").classList.add("offline");
         }
       }
+      const spinner = this._loadingOverlay.querySelector(".sp-loading-spinner");
+      if (spinner) spinner.style.display = "none";
+      const loadingText = this._loadingOverlay.querySelector(".sp-loading-text");
+      if (loadingText) {
+        loadingText.textContent =
+          "Не удалось получить источник: Kodik недоступен, Kinobox по названию ничего не вернул";
+      }
     }
   }
 
   switchPlayer(playerName, player) {
     // Показываем индикатор загрузки
+    const spinner = this._loadingOverlay.querySelector(".sp-loading-spinner");
+    if (spinner) spinner.style.display = "";
+    const loadingText = this._loadingOverlay.querySelector(".sp-loading-text");
+    if (loadingText) loadingText.textContent = "Загрузка видеоплеера...";
     this._loadingOverlay.style.display = "flex";
     // Удаляем текущий плеер из viewport
     this._viewer.innerHTML = "";
@@ -2111,14 +2336,31 @@ async function startShikiplayer() {
   ];
 
   let shikiplayer = null;
+  let initializedHref = null;
+
   // Функция инициализации плеера
   async function initializePlayer() {
+    const href = location.href;
+
+    // На первой загрузке Shikimori может почти подряд вызвать и обычный старт
+    // userscript, и turbolinks:load. Не создаём второй экземпляр для того же URL:
+    // раньше он dispose()'ил первый и обрывал его сетевые запросы.
+    if (
+      initializedHref === href &&
+      shikiplayer &&
+      shikiplayer.element &&
+      shikiplayer.element.isConnected
+    ) {
+      return;
+    }
+
+    initializedHref = href;
+
     if (shikiplayer) {
-      shikiplayer.dispose(); // Очищаем текущий плеер
+      shikiplayer.dispose();
       shikiplayer = null;
     }
-    
-    // Перепроверяем URL при каждом событии turbolinks:load
+
     if (!location.pathname.startsWith("/animes/")) return;
 
     shikiplayer = new Shikiplayer(factories, kodikApi, kinoboxApi, kpApi);
@@ -2126,9 +2368,12 @@ async function startShikiplayer() {
   }
 
   // Первичный запуск
-  initializePlayer();
-  // Обработка события Turbolinks
-  document.addEventListener("turbolinks:load", initializePlayer);
+  void initializePlayer();
+
+  // Обработка навигации Shikimori/Turbolinks
+  document.addEventListener("turbolinks:load", () => {
+    void initializePlayer();
+  });
 }
 void startAllohaHelper();
 void startShikiplayer();
